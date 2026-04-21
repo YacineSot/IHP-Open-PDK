@@ -1,6 +1,6 @@
 <Qucs Schematic 25.2.0>
 <Properties>
-  <View=71,103,1999,1205,1.12103,130,93>
+  <View=238,217,1280,823,1.44554,0,0>
   <Grid=5,5,1>
   <DataSet=sg13g2_or3_2.dat>
   <DataDisplay=sg13g2_or3_2.dpl>
@@ -14,12 +14,26 @@
   <FrameText3=Revision: 1.0>
 </Properties>
 <Symbol>
-  <.PortSym 40 20 1 0 X>
-  <.PortSym 40 60 2 0 A>
-  <.PortSym 40 100 3 0 B>
-  <.PortSym 40 140 4 0 C>
-  <.PortSym 40 180 5 0 VDD>
-  <.PortSym 40 220 6 0 VSS>
+  <.PortSym 30 0 1 180 X>
+  <Text 30 3 10 #800000 0 "X">
+  <.PortSym -30 -20 2 0 A>
+  <Text -30 -17 10 #800000 0 "A">
+  <.PortSym -30 0 3 0 B>
+  <Text -30 3 10 #800000 0 "B">
+  <.PortSym -30 20 4 0 C>
+  <Text -30 23 10 #800000 0 "C">
+  <Line -20 30 12 0 #000080 2 1>
+  <Line -8 -30 -12 0 #000080 2 1>
+  <Line -18 -20 -12 0 #000080 2 1>
+  <Line -15 0 -15 0 #000080 2 1>
+  <Line -18 20 -12 0 #000080 2 1>
+  <Line 20 0 10 0 #000080 2 1>
+  <EArc -105 63 90 -126 5311 898 #000080 2 1>
+  <EArc -40 30 60 -92 4380 1047 #000080 2 1>
+  <EArc -40 62 60 -92 350 1047 #000080 2 1>
+  <.ID 5 40 "OR">
+  <.PortSym -15 -50 5 0 VDD>
+  <.PortSym -10 55 6 0 VSS>
 </Symbol>
 <Components>
   <Port X 1 1050 505 -23 12 0 2 "1" 1 "out" 0>
