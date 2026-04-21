@@ -1,6 +1,6 @@
 <Qucs Schematic 25.2.0>
 <Properties>
-  <View=-1539,-824,2520,1537,0.795241,1179,647>
+  <View=285,167,1234,874,0.657224,0,0>
   <Grid=5,5,1>
   <DataSet=sg13g2_nand2b_1.dat>
   <DataDisplay=sg13g2_nand2b_1.dpl>
@@ -14,11 +14,24 @@
   <FrameText3=Revision: 1.0>
 </Properties>
 <Symbol>
-  <.PortSym 40 20 1 0 Y>
-  <.PortSym 40 60 2 0 A_N>
-  <.PortSym 40 100 3 0 B>
-  <.PortSym 40 140 4 0 VDD>
-  <.PortSym 40 180 5 0 VSS>
+  <.PortSym 30 0 1 180 Y>
+  <Text 30 3 10 #800000 0 "Y">
+  <.PortSym -30 -10 2 0 A_N>
+  <Text -39 -7 10 #800000 0 "A-N">
+  <.PortSym -30 10 3 0 B>
+  <Text -30 13 10 #800000 0 "B">
+  <Line 23 0 7 0 #000080 2 1>
+  <Line -15 10 -15 0 #000080 2 1>
+  <Line -15 -15 0 30 #000080 2 1>
+  <Line -15 15 15 0 #000080 2 1>
+  <Line -15 -15 15 0 #000080 2 1>
+  <Line -30 -10 7 0 #000080 2 1>
+  <EArc -23 16 35 -32 4669 2195 #000080 2 1>
+  <EArc 13 5 10 -10 0 5760 #000080 2 1>
+  <EArc -22 -7 6 -6 0 5760 #000080 2 1>
+  <.ID 5 25 "NAND_B" "1===">
+  <.PortSym -5 -35 4 0 VDD>
+  <.PortSym -5 40 5 0 VSS>
 </Symbol>
 <Components>
   <Port Y 1 1030 485 -23 12 0 2 "1" 1 "out" 0>

@@ -14,12 +14,27 @@
   <FrameText3=Revision: 1.0>
 </Properties>
 <Symbol>
-  <.PortSym 40 20 1 0 Y>
-  <.PortSym 40 60 2 0 A_N>
-  <.PortSym 40 100 3 0 B>
-  <.PortSym 40 140 4 0 C>
-  <.PortSym 40 180 5 0 VDD>
-  <.PortSym 40 220 6 0 VSS>
+  <.PortSym 30 -10 1 180 Y>
+  <Text 30 -7 10 #800000 0 "Y">
+  <.PortSym -30 -30 2 0 A_N>
+  <Text -34 -27 10 #800000 0 "A-N">
+  <.PortSym -30 -10 3 0 B>
+  <Text -30 -7 10 #800000 0 "B">
+  <.PortSym -30 10 4 0 C>
+  <Text -30 13 10 #800000 0 "C">
+  <Line -15 20 9 0 #000080 2 1>
+  <Line -30 10 15 0 #000080 2 1>
+  <Line -22 -30 -8 0 #000080 2 1>
+  <Line 22 -10 8 0 #000080 2 1>
+  <Line -15 -40 0 60 #000080 2 1>
+  <Line -15 -40 9 0 #000080 2 1>
+  <Line -30 -10 15 0 #000080 2 1>
+  <EArc 12 -5 10 -10 0 5760 #000080 2 1>
+  <EArc -42 22 54 -64 4660 2200 #000080 2 1>
+  <EArc -22 -27 6 -6 0 5760 #000080 2 1>
+  <.ID 5 25 "NAND3_B">
+  <.PortSym -5 -60 5 0 VDD>
+  <.PortSym -5 35 6 0 VSS>
 </Symbol>
 <Components>
   <Port Y 1 1065 440 -23 12 0 2 "1" 1 "out" 0>

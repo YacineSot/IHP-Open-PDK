@@ -14,11 +14,23 @@
   <FrameText3=Revision: 1.0>
 </Properties>
 <Symbol>
-  <.PortSym 40 20 1 0 Y>
-  <.PortSym 40 60 2 0 A>
-  <.PortSym 40 100 3 0 B>
-  <.PortSym 40 140 4 0 VDD>
-  <.PortSym 40 180 5 0 VSS>
+  <.PortSym 30 0 1 180 Y>
+  <Text 30 3 10 #800000 0 "Y">
+  <.PortSym -30 -10 2 0 A>
+  <Text -30 -7 10 #800000 0 "A">
+  <.PortSym -30 10 3 0 B>
+  <Text -30 13 10 #800000 0 "B">
+  <Line 23 0 7 0 #000080 2 1>
+  <Line -20 10 -10 0 #000080 2 1>
+  <Line -20 -15 0 30 #000080 2 1>
+  <Line -20 15 20 0 #000080 2 1>
+  <Line -20 -15 20 0 #000080 2 1>
+  <Line -30 -10 10 0 #000080 2 1>
+  <EArc -23 16 35 -32 4669 2195 #000080 2 1>
+  <EArc 13 5 10 -10 0 5760 #000080 2 1>
+  <.ID 5 25 "NAND">
+  <.PortSym -10 -40 4 0 VDD>
+  <.PortSym -10 40 5 0 VSS>
 </Symbol>
 <Components>
   <Port Y 1 955 440 -23 12 0 2 "1" 1 "out" 0>
