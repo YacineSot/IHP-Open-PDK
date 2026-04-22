@@ -1,6 +1,6 @@
 <Qucs Schematic 25.2.0>
 <Properties>
-  <View=-2985,-940,4316,2585,0.385692,813,250>
+  <View=-380,-391,2852,2009,0.193368,0,0>
   <Grid=5,5,1>
   <DataSet=sg13g2_sdfrbp_1.dat>
   <DataDisplay=sg13g2_sdfrbp_1.dpl>
@@ -14,15 +14,37 @@
   <FrameText3=Revision: 1.0>
 </Properties>
 <Symbol>
-  <.PortSym 40 20 1 0 Q>
-  <.PortSym 40 60 2 0 Q_N>
-  <.PortSym 40 100 3 0 CLK>
-  <.PortSym 40 140 4 0 D>
-  <.PortSym 40 180 5 0 RESET_B>
-  <.PortSym 40 220 6 0 SCD>
-  <.PortSym 40 260 7 0 SCE>
-  <.PortSym 40 300 8 0 VDD>
-  <.PortSym 40 340 9 0 VSS>
+  <.PortSym 60 -90 1 180 Q>
+  <Text 30 -95 10 #800000 0 "Q">
+  <.PortSym 60 -20 2 180 Q_N>
+  <Text 20 -25 10 #800000 0 "Q-N">
+  <.PortSym -40 -20 3 0 CLK>
+  <Text -20 -15 10 #800000 0 "CLK">
+  <.PortSym -40 -90 4 0 D>
+  <Text -20 -95 10 #800000 0 "D">
+  <.PortSym 10 20 5 0 RESET_B>
+  <Text 3 -13 10 #800000 0 "RESET-B">
+  <.PortSym -40 -70 6 0 SCD>
+  <Text -20 -75 10 #800000 0 "SCD">
+  <.PortSym -40 -40 7 0 SCE>
+  <Text -20 -45 10 #800000 0 "SCE">
+  <Line -40 -70 15 0 #000080 2 1>
+  <Line -40 -40 15 0 #000080 2 1>
+  <Line -25 -110 0 110 #000080 2 1>
+  <Line -24 -30 9 10 #000080 2 1>
+  <Line -15 -20 -9 10 #000080 2 1>
+  <Line -40 -20 15 0 #000080 2 1>
+  <Line -25 0 70 0 #000080 2 1>
+  <Line 45 0 0 -110 #000080 2 1>
+  <Line -40 -90 15 0 #000080 2 1>
+  <Line -25 -110 70 0 #000080 2 1>
+  <Line 60 -90 -15 0 #000080 2 1>
+  <Line 10 20 0 -10 #000080 2 1>
+  <EArc 5 10 10 -10 0 5760 #000080 2 1>
+  <Line 60 -20 -15 0 #000080 2 1>
+  <.ID 25 35 "SDFF">
+  <.PortSym -15 -130 8 0 VDD>
+  <.PortSym -25 50 9 0 VSS>
 </Symbol>
 <Components>
   <Port Q 1 2780 760 -23 12 0 2 "1" 1 "out" 0>
