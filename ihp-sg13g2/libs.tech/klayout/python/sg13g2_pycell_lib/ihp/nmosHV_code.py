@@ -76,8 +76,8 @@ class nmosHV(DeviceBase):
         w = self.w
         ng = self.ng
         l = self.l
-        start_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
-        start_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
+        start_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0 # use these values to drow the device on an other position than the pcell 0
+        start_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0 # use these values to drow the device on an other position than the pcell 0
 
 
         techparams = self.tech.getTechParams()
@@ -158,7 +158,7 @@ class nmosHV(DeviceBase):
         else:
             labelhv = ''
 
-        xdiff_beg = start_x
+        xdiff_beg = start_x # the device will be drawn at the position of start_x and start_y, so these values are used to calculate the position of the different rectangles
         ydiff_beg = start_y
         ydiff_end = start_y + w
 
@@ -199,7 +199,8 @@ class nmosHV(DeviceBase):
         # draw contacts and Metall
         contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end + diffoffset * 2, 0,
                      cont_Activ_overRec, cont_size, cont_dist)
-        pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S'
+        # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
+        pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S' 
         pinname = pinname + start_y.__str__() if start_y != 0 else pinname
         MkPin(self, pinname, 3, Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2),
               metall_layer_pin)
@@ -225,6 +226,7 @@ class nmosHV(DeviceBase):
                               'centerCenter', 'R90', Font.EURO_STYLE, 0.1)
 
             if onep(i):
+                # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
                 pinname = 'Gx'+ start_x.__str__() if start_x != 0 else 'G'
                 pinname = pinname + start_y.__str__() if start_y != 0 else pinname
                 MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg + diffoffset, xpoly_end, ypoly_end + diffoffset),
@@ -242,6 +244,7 @@ class nmosHV(DeviceBase):
                          cont_Activ_overRec, cont_size, cont_dist)
 
             if onep(i):
+                # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
                 pinname = 'Dx'+ start_x.__str__() if start_x != 0 else 'D'
                 pinname = pinname + start_y.__str__() if start_y != 0 else pinname
                 MkPin(self, pinname, 1, Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2),

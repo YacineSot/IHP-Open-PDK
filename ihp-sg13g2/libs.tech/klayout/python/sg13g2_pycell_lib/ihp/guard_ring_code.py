@@ -45,10 +45,11 @@ class GuardRingType(StrEnum):
     NWELLCMOS = 'nwell_cmos'
     # DNWELL = 'dnwell'
     PSUB = 'psub'
+    AUTO = 'auto' #will be used to automatically determine the guard ring type based on the context (e.g., for diff pairs, it will be nwell for pmos and psub for nmos)
 
     @classmethod
     def cases(cls) -> List[GuardRingType]:
-        return [c for c in cls]
+        return [c if c != cls.AUTO else cls.NONE for c in cls]
 
     @classmethod
     def case_values(cls) -> List[str]:

@@ -3,11 +3,13 @@ __version__ = '$Revision: #3 $'
 from cni.dlo import *
 from .geometry import *
 from .utility_functions import *
+from .device_base_code import DeviceBase
+from .guard_ring_code import GuardRingType
 
 import math
 
 
-class dpantenna(DloGen):
+class dpantenna(DeviceBase):
 
     @classmethod
     def defineParamSpecs(self, specs):
@@ -37,14 +39,16 @@ class dpantenna(DloGen):
         specs('region', ' ', 'Estimated operating region', ChoiceConstraint([' ', 'off', 'on']))
         specs('dtemp', '', 'Temperature difference')
         specs('mode', 'No', 'Linearized Region', ChoiceConstraint(['Yes', 'No']))
+        super().defineParamSpecs(specs)
 
     def setupParams(self, params):
         # process parameter values entered by user
         self.w = Numeric(params['w']) * 1e6
         self.l = Numeric(params['l']) * 1e6
         self.addRecLayer = params['addRecLayer']
+        super().setupParams(params)
 
-    def genLayout(self):
+    def genDeviceLayout(self):
         w = self.w
         l = self.l
         addRecLayer = self.addRecLayer

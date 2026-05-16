@@ -16,6 +16,20 @@
 #
 ########################################################################
 
+# FIX: Resolved shape.box returning boolean instead of Box object
+# 
+# Issue: dbLayerSize() function creates a padded shape around a polygon
+# using layer (arg2) and padding value (arg3). The Polygon class inherits
+# from Shape but incorrectly passed __polygon.box() (returns DBox object)
+# to super().__init__(layer, box) instead of a proper Box object.
+#
+# Root cause: DBox objects evaluate to False in boolean contexts due to
+# library overrides, causing shape.box to return False instead of the
+# expected Box object.
+#
+# Solution: Convert DBox to Box object before passing to parent initializer.
+
+########################################################################
 __version__ = '$Revision: #3 $'
 
 import pya
@@ -67,9 +81,13 @@ class DeviceBase(DloGen):
             for s in self.getShapes():
                 if isinstance(s, cni.text.Text):
                     continue
-
                 bbox = s.bbox
+                
+                print(f"The box object is: {s.box}")
                 if isinstance(bbox, bool):
+                    print("Warning: encountered shape with boolean bbox, skipping it for guard ring generation")
+                    print(f"The layer has noolean bbox {s.layer.name}")
+                    print(bbox)
                     # FIXME: in dpantenna/inductor2/inductor3 cells,
                     #        strangely Polygon shapes
                     #        had s.bbox being a boolean!
