@@ -96,6 +96,8 @@ class via_stack(DloGen):
         vt1_rows = self.vt1_rows
         vt2_columns = self.vt2_columns
         vt2_rows = self.vt2_rows
+        offset_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
+        offset_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
 
         #*************************************************************************
         #*
@@ -122,16 +124,33 @@ class via_stack(DloGen):
         
         vias = self.tech_info.get_vias(b_layer, t_layer)
         prev_via_array: Optional[ViaArrayInfo] = None
+        rect_array: List[Rect] = []
         
         for i, via in enumerate(vias):
             nx, ny = nx_ny_for_via(via)
             via_array = ViaArrayInfo(via, nx, ny)
             
             for box in via_array.each_via_box():
-                dbCreateRect(self, via.cut.name, box)
-            
-            dbCreateRect(self, via.bottom.name, via_array.bottom_metal_box(prev_via_array))
+                rect_array.append(dbCreateRect(self, via.cut.name, box))
+            bottom_metal_box = via_array.bottom_metal_box(prev_via_array)
+            rect_array.append(dbCreateRect(self, via.bottom.name, bottom_metal_box))
             
             prev_via_array = via_array
         
-        dbCreateRect(self, prev_via_array.via.top.name, prev_via_array.top_metal_box())
+        top_metal_box = prev_via_array.top_metal_box()
+        rect_array.append(dbCreateRect(self, prev_via_array.via.top.name, top_metal_box))
+        if not hasattr(self, 'sx') and not hasattr(self, 'sy') :
+            return
+
+        if self.sx == 0 and self.sy == 0:
+            return
+        
+        via_width = bottom_metal_box.box.width();
+        via_height = bottom_metal_box.box.height();
+
+        offset_x += via_width / 2
+        offset_y -= via_height / 2
+        print(f"Generated via stack with {len(rect_array)} rectangles, offset_x={offset_x}, offset_y={offset_y}")
+        for r in rect_array:
+            r.moveBy(offset_x, offset_y)
+        return via_width, via_height;

@@ -19,14 +19,14 @@
 __version__ = '$Revision: #3 $'
 
 from cni.dlo import *
-from .thermal import *
+from .device_base_code import DeviceBase
 from .geometry import *
+from .guard_ring_code import GuardRingType
+from .thermal import *
 from .utility_functions import *
 
-import math
 
-class nmos(DloGen):
-
+class nmos(DeviceBase):
     @classmethod
     def defineParamSpecs(cls, specs):
         techparams = specs.tech.getTechParams()
@@ -53,16 +53,30 @@ class nmos(DloGen):
         specs('m', '1', 'Multiplier')
         specs('trise', '', 'Temp rise from ambient')
 
+        super().defineParamSpecs(specs)
+
     def setupParams(self, params):
         # process parameter values entered by user
         self.w  = Numeric(params['w'])*1e6
         self.l  = Numeric(params['l'])*1e6
         self.ng = int(params['ng'])
 
-    def genLayout(self):
+        super().setupParams(params)
+
+    @classmethod
+    def validGuardRingTypes(cls) -> List[GuardRingType]:
+        """
+        Template method for subclasses to restrict the guard ring types
+        """
+        # return [GuardRingType.NONE, GuardRingType.DNWELL, GuardRingType.PSUB]
+        return [GuardRingType.NONE, GuardRingType.PSUB]
+
+    def genDeviceLayout(self):
         w  = self.w
         ng = self.ng
         l  = self.l
+        start_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
+        start_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
 
         techparams      = self.tech.getTechParams()
         self.techparams = techparams
@@ -131,9 +145,9 @@ class nmos(DloGen):
         if w < contActMin-epsilon :   #  adjust size of Gate to S/D contact region due to corner
             gatpoly_cont_dist = smallw_gatpoly_cont_dist
 
-        xdiff_beg = 0
-        ydiff_beg = 0
-        ydiff_end = w
+        xdiff_beg = start_x
+        ydiff_beg = start_y
+        ydiff_end = start_y + w
 
         xanz = fix((w-2*cont_Activ_overRec+cont_dist)/(cont_size+cont_dist)+epsilon)
         w1 = xanz*(cont_size+cont_dist)-cont_dist+cont_Activ_overRec+cont_Activ_overRec
@@ -141,7 +155,7 @@ class nmos(DloGen):
         xoffset = GridFix(xoffset)
         diffoffset = 0
         if w < contActMin :
-            xoffset = 0
+            xoffset = start_x
             diffoffset = (contActMin-w)/2
             diffoffset = Snap(diffoffset)
 
@@ -171,8 +185,9 @@ class nmos(DloGen):
 
         # draw contacts and Metall
         contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end+diffoffset*2, 0, cont_Activ_overRec, cont_size, cont_dist)
-
-        MkPin(self, 'S', 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
+        pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S'
+        pinname = pinname + start_y.__str__() if start_y != 0 else pinname
+        MkPin(self, pinname, 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
 
         # draw source diffusion
         dbCreateRect(self, ndiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec,
@@ -192,7 +207,9 @@ class nmos(DloGen):
                 dbCreateLabel(self, text_layer, Point((xpoly_beg+xpoly_end)/2, (ypoly_beg+ypoly_end)/2+diffoffset), 'nmos', 'centerCenter', 'R90', Font.EURO_STYLE, 0.1)
 
             if onep(i) :
-                MkPin(self, 'G', 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer_pin)
+                pinname = 'Gx'+ start_x.__str__() if start_x != 0 else 'G'
+                pinname = pinname + start_y.__str__() if start_y != 0 else pinname
+                MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer_pin)
 
             # draw the second cont row
             xcont_beg = xpoly_end+gatpoly_cont_dist
@@ -204,7 +221,9 @@ class nmos(DloGen):
             contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end+diffoffset*2, 0, cont_Activ_overRec, cont_size, cont_dist)
 
             if onep(i) :
-                MkPin(self, 'D', 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
+                pinname = 'Dx'+ start_x.__str__() if start_x != 0 else 'D'
+                pinname = pinname + start_y.__str__() if start_y != 0 else pinname
+                MkPin(self, pinname, 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
 
             # draw drain diffusion
             dbCreateRect(self, ndiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec,
@@ -213,4 +232,4 @@ class nmos(DloGen):
         # now finish drawing the diffusion
         xdiff_end = xcont_end+cont_Activ_overRec
         dbCreateRect(self, ndiff_layer, Box(xdiff_beg, ydiff_beg+diffoffset, xdiff_end, ydiff_end+diffoffset))
-
+        return self._getCurrentCellContext()

@@ -18,13 +18,16 @@
 __version__ = '$Revision: #3 $'
 
 from cni.dlo import *
+from .device_base_code import DeviceBase
 from .geometry import *
+from .guard_ring_code import GuardRingType
 from .thermal import *
 from .utility_functions import *
 
 import math
 
-class pmos(DloGen):
+
+class pmos(DeviceBase):
 
     @classmethod
     def defineParamSpecs(self, specs):
@@ -54,6 +57,8 @@ class pmos(DloGen):
         specs('m', '1', 'Multiplier')
         specs('trise', '', 'Temp rise from ambient')
 
+        super().defineParamSpecs(specs)
+
     def setupParams(self, params):
         # process parameter values entered by user
         self.params = params
@@ -61,7 +66,16 @@ class pmos(DloGen):
         self.l = Numeric(params['l'])
         self.ng = Numeric(params['ng'])
 
-    def genLayout(self):
+        super().setupParams(params)
+
+    @classmethod
+    def validGuardRingTypes(cls) -> List[GuardRingType]:
+        """
+        Template method for subclasses to restrict the guard ring types
+        """
+        return [GuardRingType.NONE, GuardRingType.NWELL, GuardRingType.NWELLCMOS]
+
+    def genDeviceLayout(self):
         self.grid = self.tech.getGridResolution()
         self.techparams = self.tech.getTechParams()
         self.epsilon = self.techparams['epsilon1']
@@ -69,6 +83,8 @@ class pmos(DloGen):
         w = self.w
         ng = self.ng
         l = self.l
+        start_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
+        start_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
 
         typ = 'P'
         hv = False
@@ -119,9 +135,9 @@ class pmos(DloGen):
         if w < contActMin-self.epsilon :
             gatpoly_cont_dist = smallw_gatpoly_cont_dist
 
-        xdiff_beg = 0
-        ydiff_beg = 0
-        ydiff_end = w
+        xdiff_beg = start_x
+        ydiff_beg = start_y
+        ydiff_end = start_y + w
 
         if w < wmin-self.epsilon :
             hiGetAttention()
@@ -144,7 +160,7 @@ class pmos(DloGen):
         xoffset = GridFix(xoffset)
         diffoffset = 0
         if w < contActMin :
-            xoffset = 0
+            xoffset = start_x
             diffoffset = (contActMin-w)/2
             diffoffset = Snap(diffoffset)
 
@@ -177,11 +193,12 @@ class pmos(DloGen):
         yMet2 = max(yMet2, ydiff_end+diffoffset)
 
         dbCreateRect(self, metall_layer, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2))
-
+        pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S'
+        pinname = pinname + start_y.__str__() if start_y != 0 else pinname
         if w > contActMin :
-            MkPin(self, 'S', 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
+            MkPin(self, pinname, 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
         else :
-            MkPin(self, 'S', 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
+            MkPin(self, pinname, 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
 
         if typ == 'N' :
             dbCreateRect(self, ndiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec))
@@ -203,7 +220,9 @@ class pmos(DloGen):
                 dbCreateLabel(self, textlayer, Point((xpoly_beg+xpoly_end)/2, (ypoly_beg+ypoly_end)/2+diffoffset), 'pmos'+labelhv, 'centerCenter', 'R90', Font.EURO_STYLE, 0.1)
 
             if onep(i) :
-                MkPin(self, 'G', 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer)
+                pinname = 'Gx'+ start_x.__str__() if start_x != 0 else 'G'
+                pinname = pinname + start_y.__str__() if start_y != 0 else pinname
+                MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer)
 
             # draw the second cont row
             xcont_beg = xpoly_end+gatpoly_cont_dist
@@ -217,10 +236,12 @@ class pmos(DloGen):
             contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end+diffoffset*2, 0, cont_Activ_overRec, cont_size, cont_dist)
 
             if onep(i) :
+                pinname = 'Dx'+ start_x.__str__() if start_x != 0 else 'D'
+                pinname = pinname + start_y.__str__() if start_y != 0 else pinname
                 if w > contActMin :
-                    MkPin(self, 'D', 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
+                    MkPin(self, pinname, 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
                 else :
-                    MkPin(self, 'D', 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
+                    MkPin(self, pinname, 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer)
 
 
             if typ == 'N' :
@@ -241,9 +262,10 @@ class pmos(DloGen):
             dbCreateRect(self, well_layer, Box(xdiff_beg-nwell_pActiv_over, ydiff_beg-nwell_pActiv_over+diffoffset-nwell_offset, xdiff_end+nwell_pActiv_over, ydiff_end+nwell_pActiv_over+diffoffset+nwell_offset))
 
         # B-Pin
-        MkPin(self, 'B', 4, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec), Layer('Substrate', 'drawing'))
+        pinname = 'Bx'+ start_x.__str__() if start_x != 0 else 'B'
+        pinname = pinname + start_y.__str__() if start_y != 0 else pinname
+        MkPin(self, pinname, 4, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec), Layer('Substrate', 'drawing'))
 
         # draw Thick Gate Oxide
         if hv :
             dbCreateRect(self, Layer('ThickGateOx', 'drawing'), Box(xdiff_beg-thGateOxAct, ydiff_beg-gatpoly_Activ_over-thGateOxGat, xdiff_end+thGateOxAct, ydiff_end+gatpoly_Activ_over+thGateOxGat))
-

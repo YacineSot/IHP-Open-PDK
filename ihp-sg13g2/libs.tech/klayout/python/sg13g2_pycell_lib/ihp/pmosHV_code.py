@@ -18,13 +18,15 @@
 __version__ = '$Revision: #3 $'
 
 from cni.dlo import *
+from .device_base_code import DeviceBase
 from .geometry import *
+from .guard_ring_code import GuardRingType
 from .thermal import *
 from .utility_functions import *
 
 import math
 
-class pmosHV(DloGen):
+class pmosHV(DeviceBase):
 
     @classmethod
     def defineParamSpecs(self, specs):
@@ -54,6 +56,8 @@ class pmosHV(DloGen):
         specs('m', '1', 'Multiplier')
         specs('trise', '', 'Temp rise from ambient')
 
+        super().defineParamSpecs(specs)
+
     def setupParams(self, params):
         # process parameter values entered by user
         self.params = params
@@ -61,7 +65,16 @@ class pmosHV(DloGen):
         self.l = Numeric(params['l'])
         self.ng = Numeric(params['ng'])
 
-    def genLayout(self):
+        super().setupParams(params)
+
+    @classmethod
+    def validGuardRingTypes(cls) -> List[GuardRingType]:
+        """
+        Template method for subclasses to restrict the guard ring types
+        """
+        return [GuardRingType.NONE, GuardRingType.NWELL, GuardRingType.NWELLCMOS]
+
+    def genDeviceLayout(self):
         self.grid = self.tech.getGridResolution()
         self.techparams = self.tech.getTechParams()
         self.epsilon = self.techparams['epsilon1']
@@ -69,6 +82,9 @@ class pmosHV(DloGen):
         w = self.w
         ng = self.ng
         l = self.l
+        start_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
+        start_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
+
 
         ndiff_layer = Layer('Activ', 'drawing')     # 1
         pdiff_layer = Layer('Activ', 'drawing')     # 1
@@ -112,9 +128,9 @@ class pmosHV(DloGen):
         if w < contActMin-self.epsilon :
             gatpoly_cont_dist = smallw_gatpoly_cont_dist
 
-        xdiff_beg = 0
-        ydiff_beg = 0
-        ydiff_end = w
+        xdiff_beg = start_x
+        ydiff_beg = start_y
+        ydiff_end = start_y + w
 
         if w < wmin-self.epsilon :
             hiGetAttention()
@@ -137,7 +153,7 @@ class pmosHV(DloGen):
         xoffset = GridFix(xoffset)
         diffoffset = 0
         if w < contActMin :
-            xoffset = 0
+            xoffset = start_x
             diffoffset = (contActMin-w)/2
             diffoffset = Snap(diffoffset)
 
@@ -170,11 +186,12 @@ class pmosHV(DloGen):
         yMet2 = max(yMet2, ydiff_end+diffoffset)
 
         dbCreateRect(self, metall_layer, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2))
-
+        pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S'
+        pinname = pinname + start_y.__str__() if start_y != 0 else pinname
         if w > contActMin :
-            MkPin(self, 'S', 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
+            MkPin(self, pinname, 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
         else :
-            MkPin(self, 'S', 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
+            MkPin(self, pinname, 3, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
 
         dbCreateRect(self, pdiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec))
 
@@ -193,7 +210,9 @@ class pmosHV(DloGen):
                 dbCreateLabel(self, text_layer, Point((xpoly_beg+xpoly_end)/2, (ypoly_beg+ypoly_end)/2+diffoffset), 'pmosHV', 'centerCenter', 'R90', Font.EURO_STYLE, 0.1)
 
             if onep(i) :
-                MkPin(self, 'G', 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer_pin)
+                pinname = 'Gx'+ start_x.__str__() if start_x != 0 else 'G'
+                pinname = pinname + start_y.__str__() if start_y != 0 else pinname
+                MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer_pin)
 
             # draw the second cont row
             xcont_beg = xpoly_end+gatpoly_cont_dist
@@ -207,10 +226,12 @@ class pmosHV(DloGen):
             contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end+diffoffset*2, 0, cont_Activ_overRec, cont_size, cont_dist)
 
             if onep(i) :
+                pinname = 'Dx'+ start_x.__str__() if start_x != 0 else 'D'
+                pinname = pinname + start_y.__str__() if start_y != 0 else pinname
                 if w > contActMin :
-                    MkPin(self, 'D', 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
+                    MkPin(self, pinname, 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
                 else :
-                    MkPin(self, 'D', 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
+                    MkPin(self, pinname, 1, Box(xcont_beg-cont_metall_over, yMet1, xcont_end+cont_metall_over, yMet2), metall_layer_pin)
 
 
             dbCreateRect(self, pdiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec))
@@ -228,7 +249,9 @@ class pmosHV(DloGen):
                                            xdiff_end+nwell_pActiv_over, ydiff_end+nwell_pActiv_over+diffoffset+nwell_offset))
 
         # B-Pin
-        MkPin(self, 'B', 4, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec), Layer('Substrate', 'drawing'))
+        pinname = 'Bx'+ start_x.__str__() if start_x != 0 else 'B'
+        pinname = pinname + start_y.__str__() if start_y != 0 else pinname
+        MkPin(self, pinname, 4, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec), Layer('Substrate', 'drawing'))
 
         # draw Thick Gate Oxide
         
@@ -246,4 +269,3 @@ class pmosHV(DloGen):
             y2 = ydiff_end+nwell_pActiv_over+diffoffset+nwell_offset
         
         dbCreateRect(self, tgo_layer, Box(x1, y1, x2, y2))
-        
