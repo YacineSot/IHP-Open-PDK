@@ -82,8 +82,6 @@ class DeviceBase(DloGen):
                 if isinstance(s, cni.text.Text):
                     continue
                 bbox = s.bbox
-                
-                print(f"The box object is: {s.box}")
                 if isinstance(bbox, bool):
                     print("Warning: encountered shape with boolean bbox, skipping it for guard ring generation")
                     print(f"The layer has noolean bbox {s.layer.name}")
