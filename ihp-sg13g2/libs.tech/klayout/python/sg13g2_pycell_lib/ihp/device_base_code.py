@@ -28,6 +28,11 @@
 # expected Box object.
 #
 # Solution: Convert DBox to Box object before passing to parent initializer.
+# On the polygon.py file, the def __internalInit(self, layer: Layer) function, 
+# Update the super().__init__(layer, self._polygon.bbox()) to a create Box (instead of the passed DBox object)
+# for example: conv_box = Box(0,0,0,0)
+#        conv_box.box = self._polygon.bbox()
+#        super().__init__(layer, conv_box)
 
 ########################################################################
 __version__ = '$Revision: #3 $'
