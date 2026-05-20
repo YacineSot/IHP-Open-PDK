@@ -51,8 +51,10 @@ class DeviceBase(DloGen):
     @classmethod
     def defineParamSpecs(cls, specs):
         choices = [c.value for c in cls.validGuardRingTypes()]
-        specs('guardRingType', 'none', 'Guard Ring Type', ChoiceConstraint(choices))
-        specs('guardRingDistance', '1u', 'Guard Ring Distance')
+        cls.default_ring = cls.default_ring if hasattr(cls, 'default_ring') else 'none'
+        cls.default_distance = cls.default_distance if hasattr(cls, 'default_distance') else '0.8u'
+        specs('guardRingType', cls.default_ring, 'Guard Ring Type', ChoiceConstraint(choices))
+        specs('guardRingDistance', cls.default_distance, 'Guard Ring Distance')
         specs('guardRingShape', 'o', 'Guard Ring Shape', ChoiceConstraint(GuardRingShape.case_values()))
 
     def setupParams(self, params):

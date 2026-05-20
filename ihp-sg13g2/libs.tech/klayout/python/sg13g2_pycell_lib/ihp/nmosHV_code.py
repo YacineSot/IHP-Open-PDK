@@ -23,6 +23,7 @@ from .geometry import *
 from .guard_ring_code import GuardRingType
 from .thermal import *
 from .utility_functions import *
+from .via_stack_code import *
 
 import math
 
@@ -54,10 +55,17 @@ class nmosHV(DeviceBase):
 
         specs('m', '1', 'Multiplier')
         specs('trise', '', 'Temp rise from ambient')
-
+        specs('s_d_mlayer', 'M2', 'S/D Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
+        specs('gate_connection', 'T-B', 'Gate contact position', ChoiceConstraint(['T-B', 'T', 'B', 'none']))
+        specs('gate_metal', 'M2', 'Gate contact metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
+        cls.default_ring =  'psub'
+        cls.default_distance = '0.57u'
         super().defineParamSpecs(specs)
 
     def setupParams(self, params):
+        self.s_d_mlayer = params['s_d_mlayer']
+        self.gate_connection = params['gate_connection']
+        self.gate_metal = params['gate_metal']
         self.w = Numeric(params['w'])*1e6
         self.ng = int(params['ng'])
         self.l = Numeric(params['l'])*1e6
@@ -72,6 +80,30 @@ class nmosHV(DeviceBase):
         # return [GuardRingType.NONE, GuardRingType.DNWELL, GuardRingType.PSUB]
         return [GuardRingType.NONE, GuardRingType.PSUB]
 
+    def genVia(self, vn_columns, vn_rows, offset_x=0, offset_y=0, b_layer = 'GatPoly', t_layer = 'Metal1', use_width = False):
+        back_sx = self.sx if hasattr(self, 'sx') else 0
+        back_sy = self.sy if hasattr(self, 'sy') else 0
+        self.sx = offset_x
+        self.sy = offset_y
+        self.b_layer = b_layer
+        self.t_layer = t_layer
+        self.vn_columns = 0
+        self.vn_rows = 0
+        if not use_width:
+            self.vn_columns = vn_columns
+            self.vn_rows = vn_rows
+        else :
+            self.vn_total_width = vn_columns
+            self.vn_total_height = vn_rows
+        self.vt1_columns = 0
+        self.vt1_rows = 0
+        self.vt2_columns = 0
+        self.vt2_rows = 0
+        vias = via_stack.genLayout(self)
+        self.sx = back_sx
+        self.sy = back_sy
+        return vias
+    
     def genDeviceLayout(self):
         w = self.w
         ng = self.ng
@@ -124,6 +156,7 @@ class nmosHV(DeviceBase):
         endcap = techparams['M1_c1']
         cont_size = techparams['Cnt_a']
         cont_dist = techparams['Cnt_b']
+        cont_dist_act = self.techparams['Cnt_e']
         cont_Activ_overRec = techparams['Cnt_c']
         cont_metall_over = techparams['M1_c']
         gatpoly_Activ_over = techparams['Gat_c']
@@ -197,8 +230,15 @@ class nmosHV(DeviceBase):
         dbCreateRect(self, metall_layer, Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2))
 
         # draw contacts and Metall
+        diff_width = - (xcont_beg-cont_Activ_overRec) + xcont_end+cont_Activ_overRec
+        diff_height = - ydiff_beg + ydiff_end+diffoffset*2
         contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end + diffoffset * 2, 0,
                      cont_Activ_overRec, cont_size, cont_dist)
+        ## draw S/D diffusion metal contacts
+        if self.s_d_mlayer != 'M1':
+            metal = self.s_d_mlayer.replace('M', 'Metal')
+            metal = metal.replace('T', 'Top')
+            self.genVia(0, self.w/self.ng, diff_width / 2,diff_height/2,'Metal1', metal, True)
         # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
         pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S' 
         pinname = pinname + start_y.__str__() if start_y != 0 else pinname
@@ -215,7 +255,20 @@ class nmosHV(DeviceBase):
             ypoly_beg = ydiff_beg - gatpoly_Activ_over
             xpoly_end = xpoly_beg + l
             ypoly_end = ydiff_end + gatpoly_Activ_over
-            dbCreateRect(self, poly_layer, Box(xpoly_beg, ypoly_beg + diffoffset, xpoly_end, ypoly_end + diffoffset))
+            ## Drow gate contacts
+            if self.gate_connection != 'none':
+                metal_layer = self.gate_metal.replace('M', 'Metal')
+                metal_layer = metal_layer.replace('T','Top')
+                additional_offset = 0.04 if self.l < 0.5 else 0
+                gate_offset = 0.005 if additional_offset > 0 else 0
+                ### Bottom contacts
+                if 'B' in self.gate_connection:
+                    self.genVia(self.l, 0, l/2+xpoly_beg, -cont_dist_act - cont_size/2 - additional_offset, 'GatPoly', metal_layer, True)
+                ### Top contacts
+                if 'T' in self.gate_connection:
+                    top_distace  = max(ycont_beg+cont_size+cont_Activ_overRec, ydiff_end)
+                    self.genVia(self.l, 0, l/2+xpoly_beg, top_distace + cont_dist_act + cont_size/2  + additional_offset, 'GatPoly', metal_layer, True)
+            dbCreateRect(self, poly_layer, Box(xpoly_beg, ypoly_beg + diffoffset - gate_offset, xpoly_end, ypoly_end + diffoffset + gate_offset))
 
             ihpAddThermalMosLayer(self, Box(xpoly_beg, ypoly_beg + diffoffset, xpoly_end, ypoly_end + diffoffset), True,
                                   Cell)
@@ -239,10 +292,16 @@ class nmosHV(DeviceBase):
             xcont_end = xcont_beg + cont_size
             dbCreateRect(self, metall_layer,
                          Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2))
-
+            
+            diff_width =  (xcont_beg-cont_Activ_overRec) + xcont_end+cont_Activ_overRec
+            diff_height = - ydiff_beg + ydiff_end+diffoffset*2
             contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end + diffoffset * 2, 0,
                          cont_Activ_overRec, cont_size, cont_dist)
-
+            if self.s_d_mlayer != 'M1':
+                metal = self.s_d_mlayer.replace('M', 'Metal')
+                metal = metal.replace('T', 'Top')
+                self.genVia(0, self.w/self.ng, diff_width / 2,diff_height/2,'Metal1',  metal, True)
+            
             if onep(i):
                 # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
                 pinname = 'Dx'+ start_x.__str__() if start_x != 0 else 'D'

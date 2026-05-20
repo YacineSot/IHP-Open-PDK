@@ -42,7 +42,6 @@ else:
 class GuardRingType(StrEnum):
     NONE = 'none'
     NWELL = 'nwell'
-    NWELLCMOS = 'nwell_cmos'
     # DNWELL = 'dnwell'
     PSUB = 'psub'
     AUTO = 'auto' #will be used to automatically determine the guard ring type based on the context (e.g., for diff pairs, it will be nwell for pmos and psub for nmos)
@@ -86,7 +85,11 @@ def generate_guard_ring(dlo_gen: DloGen,
 
     sub = Layer('Substrate', 'drawing')
     nwell = Layer('NWell', 'drawing')
-    nbulay = Layer('nBuLay' if guard_ring_type != 'nwell_cmos' else 'nSD' , 'drawing')
+    nbulay = None
+    try:
+        nbulay = Layer('nBuLay')
+    except:
+        print("You are on cmos5l technology")
     activ = Layer('Activ', 'drawing')
     psd = Layer('pSD', 'drawing')
     cont = Layer('Cont', 'drawing')
@@ -106,11 +109,10 @@ def generate_guard_ring(dlo_gen: DloGen,
     ndiff_over = techparams['NW_e']     # Minimum NWell enclosure of NWell tie
                                         # surrounded entirely by NWell in N+Activ1
     pdiffx_over = techparams['pSD_c1']  # pSD enc. of p+Activ in pWell
-    nbulay_min_w = techparams['NBL_a' if guard_ring_type != 'nwell_cmos' else 'pSD_a']  # Min nBulLay width
+    nbulay_min_w = techparams['NBL_a']  # Min nBulLay width
     min_metal1_width = techparams['M1_a']  # Min Metal1 Width
     min_metal1_cont_encl = techparams['M1_c1']  # Min. Metal1 endcap enclosure of Cont
 
-    guard_ring_type = 'nwell' if guard_ring_type == 'nwell_cmos' else guard_ring_type
 
     #*************************************************************************
     #*
@@ -233,7 +235,8 @@ def generate_guard_ring(dlo_gen: DloGen,
     if guard_ring_type == 'nwell':
         draw_well_box(nwell, xl, yb, xr, yt, max(nbulay_over, ndiff_over))
         draw_ring(activ, xl, yb, xr, yt, wguard_active, 0.0, label=(text, 'well'))
-        draw_ring(nbulay, xl, yb, xr, yt, wguard_active, nbulay_over)
+        if nbulay:
+            draw_ring(nbulay, xl, yb, xr, yt, wguard_active, nbulay_over)
     # elif guard_ring_type == 'dnwell':
     #     draw_well_box(nwell, xl, yb, xr, yt, wguard, nbulay_over)
     #     draw_well_box(nbulay, xl, yb, xr, yt, wguard, nbulay_over)
