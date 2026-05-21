@@ -241,6 +241,7 @@ class pmosHV(DeviceBase):
             xpoly_end = xpoly_beg+l
             ypoly_end = ydiff_end+gatpoly_Activ_over
              
+            gate_offset = 0
             ## Drow gate contacts
             if self.gate_connection != 'none':
                 metal_layer = self.gate_metal.replace('M', 'Metal')
