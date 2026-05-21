@@ -160,8 +160,8 @@ class via_stack(DloGen):
                 via_size = cont_size
                 via_sep = cont_sep2
                 via_enc = cont_enc2
-            vn_total_width = (vn_columns * via_size + (vn_columns - 1) * via_sep) + 2*via_enc
-            vn_total_height = (vn_rows * via_size + (vn_rows - 1) * via_sep) + 2*via_enc
+            vn_total_width = (vn_columns * via_size + (vn_columns - 1) * via_sep) + via_enc
+            vn_total_height = (vn_rows * via_size + (vn_rows - 1) * via_sep) + via_enc
                 
                 
         
