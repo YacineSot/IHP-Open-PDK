@@ -60,7 +60,7 @@ class mirror(DeviceBase):
         specs('dummies_distance', '0.3u', 'Dummies distance')
         specs('n_dummies', 1, 'Number of dummy fingers on each side')
         specs('n_rows', 2, 'Number of rows')
-        specs('n_cells', 2, 'Number of cells')
+        # specs('n_cells', 2, 'Number of cells')
         specs('model_type', 'nmos', 'Model Type', ChoiceConstraint(['nmos', 'pmos', 'nmosHV', 'pmosHV']))
 
         super().defineParamSpecs(specs)
@@ -73,7 +73,7 @@ class mirror(DeviceBase):
         self.nd = int(params['n_dummies'])
         self.model_type = params['model_type']
         nr = int(params['n_rows'])
-        nc = int(params['n_cells'])
+        nc = 2 # int(params['n_cells'])
         self.nr = nr if nr > 2 else 2
         self.nc = nc if nc > 2 else 2
         self.params = params

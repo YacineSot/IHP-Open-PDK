@@ -59,8 +59,8 @@ class diff_pairs(DeviceBase):
         specs('pairs_distance', '0.21u', 'Diffrential pairs distance')
         specs('dummies_distance', '0.3u', 'Dummies distance')
         specs('n_dummies', 1, 'Number of dummy fingers on each side')
-        specs('n_rows', 2, 'Number of rows')
-        specs('n_cells', 2, 'Number of cells')
+        # specs('n_rows', 2, 'Number of rows')
+        # specs('n_cells', 2, 'Number of cells')
         specs('model_type', 'nmos', 'Model Type', ChoiceConstraint(['nmos', 'pmos', 'nmosHV', 'pmosHV']))
 
         super().defineParamSpecs(specs)
@@ -72,8 +72,8 @@ class diff_pairs(DeviceBase):
         self.ng = 1
         self.nd = int(params['n_dummies'])
         self.model_type = params['model_type']
-        nr = int(params['n_rows'])
-        nc = int(params['n_cells'])
+        nr = 2 #int(params['n_rows'])
+        nc = 2 #int(params['n_cells'])
         self.nr = nr if nr < 2 else 2
         self.nc = nc if nc < 2 else 2
         self.params = params
@@ -270,8 +270,9 @@ class diff_pairs(DeviceBase):
                         gat_box = Box(via_step_x, via_2_y_offset, via_step_x + device_length, via_2_y_offset - via_height)
                         dbCreateRect(self, poly_layer, gat_box)
                         # link sources together
-                        met1_box = Box(device_step_x - x_offset - cont_Activ_overRec + origin_maxleft_distance,  device_step_y*(i), device_step_x + cont_Activ_overRec, - device_step_y*i - y_offset + origin_bottom_distance)
-                        dbCreateRect(self, metall_layer, met1_box)
+                        if self.cs:
+                            met1_box = Box(device_step_x - x_offset - cont_Activ_overRec + origin_maxleft_distance,  device_step_y*(i), device_step_x + cont_Activ_overRec, - device_step_y*i - y_offset + origin_bottom_distance)
+                            dbCreateRect(self, metall_layer, met1_box)
                         if j == 0 and via_width/3 >= min_metal_width and self.cg:
                             met2_box = Box(via_x_offset + 2*via_width/3, via_y_offset, via_x_offset + via_width, via_2_y_offset - via_height);
                             dbCreateRect(self, metal2_layer, met2_box)
