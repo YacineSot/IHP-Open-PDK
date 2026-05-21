@@ -238,7 +238,7 @@ class nmosHV(DeviceBase):
         if self.s_d_mlayer != 'M1':
             metal = self.s_d_mlayer.replace('M', 'Metal')
             metal = metal.replace('T', 'Top')
-            self.genVia(0, self.w/self.ng, diff_width / 2,diff_height/2,'Metal1', metal, True)
+            self.genVia(0, self.w/self.ng, GridFix (diff_width / 2), GridFix (diff_height/2),'Metal1', metal, True)
         # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
         pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S' 
         pinname = pinname + start_y.__str__() if start_y != 0 else pinname
@@ -259,15 +259,15 @@ class nmosHV(DeviceBase):
             if self.gate_connection != 'none':
                 metal_layer = self.gate_metal.replace('M', 'Metal')
                 metal_layer = metal_layer.replace('T','Top')
-                additional_offset = 0.04 if self.l < 0.5 else 0
-                gate_offset = 0.005 if additional_offset > 0 else 0
+                additional_offset = 0.065 if self.l < 0.5 else 0
+                gate_offset = additional_offset - 0.035 if additional_offset > 0 else 0
                 ### Bottom contacts
                 if 'B' in self.gate_connection:
-                    self.genVia(self.l, 0, l/2+xpoly_beg, -cont_dist_act - cont_size/2 - additional_offset, 'GatPoly', metal_layer, True)
+                    self.genVia(self.l, 0, GridFix(l/2+xpoly_beg), GridFix(-cont_dist_act - cont_size/2 - additional_offset), 'GatPoly', metal_layer, True)
                 ### Top contacts
                 if 'T' in self.gate_connection:
                     top_distace  = max(ycont_beg+cont_size+cont_Activ_overRec, ydiff_end)
-                    self.genVia(self.l, 0, l/2+xpoly_beg, top_distace + cont_dist_act + cont_size/2  + additional_offset, 'GatPoly', metal_layer, True)
+                    self.genVia(self.l, 0, GridFix(l/2+xpoly_beg), GridFix(top_distace + cont_dist_act + cont_size/2  + additional_offset), 'GatPoly', metal_layer, True)
             dbCreateRect(self, poly_layer, Box(xpoly_beg, ypoly_beg + diffoffset - gate_offset, xpoly_end, ypoly_end + diffoffset + gate_offset))
 
             ihpAddThermalMosLayer(self, Box(xpoly_beg, ypoly_beg + diffoffset, xpoly_end, ypoly_end + diffoffset), True,
@@ -300,7 +300,7 @@ class nmosHV(DeviceBase):
             if self.s_d_mlayer != 'M1':
                 metal = self.s_d_mlayer.replace('M', 'Metal')
                 metal = metal.replace('T', 'Top')
-                self.genVia(0, self.w/self.ng, diff_width / 2,diff_height/2,'Metal1',  metal, True)
+                self.genVia(0, self.w/self.ng, GridFix (diff_width / 2), GridFix (diff_height/2),'Metal1',  metal, True)
             
             if onep(i):
                 # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!

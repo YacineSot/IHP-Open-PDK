@@ -213,7 +213,8 @@ class pmosHV(DeviceBase):
         if self.s_d_mlayer != 'M1':
             metal = self.s_d_mlayer.replace('M', 'Metal')
             metal = metal.replace('T', 'Top')
-            self.genVia(0, self.w*1e6/self.ng, diff_width / 2,diff_height/2,'Metal1', metal, True)
+            via_offset = GridFix(diff_height/2)
+            self.genVia(0, self.w*1e6/self.ng, diff_width / 2,via_offset,'Metal1', metal, True)
         # 30.01.08 GGa added block
         # draw Metal rect
         # calculate bot and top cont position
@@ -244,15 +245,15 @@ class pmosHV(DeviceBase):
             if self.gate_connection != 'none':
                 metal_layer = self.gate_metal.replace('M', 'Metal')
                 metal_layer = metal_layer.replace('T','Top')
-                additional_offset = 0.04 if self.l < 0.5e-6 else 0
-                gate_offset = 0.005 if additional_offset > 0 else 0
+                additional_offset = 0.065 if self.l < 0.5e-6 else 0
+                gate_offset = additional_offset - 0.035 if additional_offset > 0 else 0
                 ### Bottom contacts
                 if 'B' in self.gate_connection:
-                    self.genVia(self.l*1e6, 0, l/2+xpoly_beg, -cont_dist_act - cont_size/2 - additional_offset, 'GatPoly', metal_layer, True)
+                    self.genVia(self.l*1e6, 0, GridFix(l/2+xpoly_beg), GridFix(-cont_dist_act - cont_size/2 - additional_offset), 'GatPoly', metal_layer, True)
                 ### Top contacts
                 if 'T' in self.gate_connection:
                     top_distace  = max(ycont_beg+cont_size+cont_Activ_overRec, ydiff_end)
-                    self.genVia(self.l*1e6, 0, l/2+xpoly_beg, top_distace + cont_dist_act + cont_size/2  + additional_offset, 'GatPoly', metal_layer, True)
+                    self.genVia(self.l*1e6, 0, GridFix(l/2+xpoly_beg), GridFix(top_distace + cont_dist_act + cont_size/2  + additional_offset), 'GatPoly', metal_layer, True)
                     
             ## Drow gate poly
             dbCreateRect(self, poly_layer, Box(xpoly_beg, ypoly_beg+diffoffset - gate_offset, xpoly_end, ypoly_end+diffoffset + gate_offset))
@@ -282,7 +283,8 @@ class pmosHV(DeviceBase):
             if self.s_d_mlayer != 'M1':
                 metal = self.s_d_mlayer.replace('M', 'Metal')
                 metal = metal.replace('T', 'Top')
-                self.genVia(0, self.w*1e6/self.ng, diff_width / 2,diff_height/2,'Metal1',  metal, True)
+                via_offset = GridFix(diff_height/2)
+                self.genVia(0, self.w*1e6/self.ng, diff_width / 2,via_offset,'Metal1',  metal, True)
             
             if onep(i) :
                 pinname = 'Dx'+ start_x.__str__() if start_x != 0 else 'D'

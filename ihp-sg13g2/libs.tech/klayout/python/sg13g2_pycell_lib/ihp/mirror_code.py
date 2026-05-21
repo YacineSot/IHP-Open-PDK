@@ -25,7 +25,7 @@ from .geometry import *
 from .nmos_code import nmos
 from .pmos_code import pmos
 from .device_base_code import DeviceBase
-from .via_stack_code import via_stack
+from .via_stack2_code import via_stack
 from .nmosHV_code import nmosHV
 from .pmosHV_code import pmosHV
 
@@ -81,6 +81,9 @@ class mirror(DeviceBase):
         self.dd = Numeric(params['dummies_distance']) * 1e6
         self.cg = params['connect_gates'] == 'Yes'
         self.cs = params['connect_sources'] == 'Yes'
+        self.s_d_mlayer = 'M1'
+        self.gate_connection = 'none'
+        self.gate_metal = 'M1'
 
         super().setupParams(params)
 
