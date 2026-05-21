@@ -66,6 +66,8 @@ class via_stack(DloGen):
         
         offset_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
         offset_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
+        
+        self.extra_vias = False if not hasattr(self, 'extra_vias') else self.extra_vias
 
 
         Cell = self.__class__.__name__
@@ -115,8 +117,8 @@ class via_stack(DloGen):
         #*
         #************************************************************************
 
-        vn_columns = self.vn_columns if self.vn_columns > 0 else 1
-        vn_rows = self.vn_rows if self.vn_rows > 0 else 1
+        vn_columns = self.vn_columns 
+        vn_rows = self.vn_rows 
         vn_total_width = self.vn_total_width if hasattr(self, 'vn_total_width') else 0
         vn_total_height = self.vn_total_height if hasattr(self, 'vn_total_height') else 0
 
@@ -139,8 +141,8 @@ class via_stack(DloGen):
             b_layer, t_layer = t_layer, b_layer  # Also swap layer names
         stack_layers = metal_layers[idx_b:idx_t+1]
         def via_count_from_size(via_size, via_sep, via_total_size, via_num):
-            ret = max(math.floor((via_total_size + via_sep)/(via_size + via_sep)), 1) if via_total_size > 0 else via_num
-            return ret -1 if via_num == 0 else ret
+            ret = math.floor((via_total_size + via_sep)/(via_size + via_sep)) if via_total_size > 0 else via_num
+            return max(ret -1, 1) if via_num == 0 else ret
 
         if vn_total_width == 0 and self.extra_vias:
             via_size = vn_size
