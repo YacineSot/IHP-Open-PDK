@@ -140,12 +140,14 @@ def generate_guard_ring(dlo_gen: DloGen,
         top_box    = Box(xl,         yt - width,  xr,          yt)
         left_box   = Box(xl,         yb + width,  xl + width,  yt - width)
         right_box  = Box(xr - width, yb + width,  xr,          yt - width)
-        if guard_ring_shape in ('o', 'u'):
+        if 's' in guard_ring_shape:
             dbCreateRect(dlo_gen, met1, bottom_box)
-        if guard_ring_shape in ('o', 'n'):
+        if 'n' in guard_ring_shape:
             dbCreateRect(dlo_gen, met1, top_box)
-        dbCreateRect(dlo_gen, met1, left_box)
-        dbCreateRect(dlo_gen, met1, right_box)
+        if 'w' in guard_ring_shape:
+            dbCreateRect(dlo_gen, met1, left_box)
+        if 'e' in guard_ring_shape:
+            dbCreateRect(dlo_gen, met1, right_box)
 
         # NOTE: in case of leftover space, we adjust the offset to ensure the spacing
         #       we want to create the gap in the middle
@@ -168,7 +170,11 @@ def generate_guard_ring(dlo_gen: DloGen,
         v_available_span =  left_box.top - left_box.bottom + 2 * cont_min_act_encl - 2 * cont_space
         h_num_contacts, h_remainder = num_contacts_and_remainder(h_available_span)
         v_num_contacts, v_remainder = num_contacts_and_remainder(v_available_span)
-        boxes_enum = (bottom_box,) if guard_ring_shape == 'u' else (top_box,) if guard_ring_shape == 'n' else (bottom_box, top_box)
+        boxes_enum = ()
+        if 's' in guard_ring_shape:
+            boxes_enum += (bottom_box,)
+        if 'n' in guard_ring_shape:
+            boxes_enum += (top_box,)
         for box in boxes_enum:
             x1 = box.left + cont_min_act_encl
             y_bot = box.bottom + cont_min_act_encl
@@ -181,8 +187,12 @@ def generate_guard_ring(dlo_gen: DloGen,
                     x1 = x2 + h_remainder
                 else:
                     x1 = x2 + cont_space
-
-        for box in (left_box, right_box):
+        boxes_enum = ()
+        if 'w' in guard_ring_shape:
+            boxes_enum += (left_box,)
+        if 'e' in guard_ring_shape:
+            boxes_enum += (right_box,)
+        for box in boxes_enum:
             y1 = box.bottom - cont_min_act_encl + cont_space
             x_left = box.left + cont_min_act_encl
             x_right = x_left + cont_size
@@ -200,31 +210,35 @@ def generate_guard_ring(dlo_gen: DloGen,
                   width: float,
                   over: float,
                   label: Optional[Tuple[Layer, str]] = None):
-        over_lr_b = over if guard_ring_shape in ('o', 'u') else -over
-        over_lr_t = over if guard_ring_shape in ('o', 'n') else -over
-        box_bottom = Box(xl - over,         yb - over,         xr + over,         yb + width + over)
-        box_top    = Box(xl - over,         yt + over,         xr + over,         yt - width - over)
+        over_lr_b = over if 's' in guard_ring_shape else -over
+        over_lr_t = over if 'n' in guard_ring_shape else -over
+        over_tb_l = over if 'w' in guard_ring_shape else -over
+        over_tb_r = over if 'e' in guard_ring_shape else -over
+        box_bottom = Box(xl -over,         yb - over,         xr + over,         yb + width + over)
+        box_top    = Box(xl -over,         yt + over,         xr + over,         yt - width - over)
         box_left   = Box(xl - over,         yb + width + over_lr_b, xl + width + over, yt - width - over_lr_t)
         box_right  = Box(xr - width - over, yb + width + over_lr_b, xr + over,         yt - width - over_lr_t)
 
-        if label is not None:
+        if label is not None and len(guard_ring_shape) > 0:
             label_lyr, label_txt = label
-            label_point = box_bottom.getCenter() if guard_ring_shape != 'n' else box_top.getCenter()
+            label_point = box_bottom.getCenter() if 's' in guard_ring_shape else box_top.getCenter() if 'n' in guard_ring_shape else box_left.getCenter() if 'w' in guard_ring_shape else box_right.getCenter()
+            label_rotation  = 'R0' if 's' in guard_ring_shape or 'n' in guard_ring_shape else 'R90'
             dbCreateLabel(dlo_gen, label_lyr, label_point, label_txt, 'centerCenter',
-                          'R0', Font.EURO_STYLE, cont_size)
+                          label_rotation, Font.EURO_STYLE, cont_size)
 
         mlist = ulist[Rect]()
         rects_list = [];
-        if guard_ring_shape in ('o', 'n'):
+        if 'n' in guard_ring_shape:
             rects_list.append(dbCreateRect(dlo_gen, lyr, box_top))
-        if guard_ring_shape in ('o', 'u'):
+        if 's' in guard_ring_shape:
             rects_list.append(dbCreateRect(dlo_gen, lyr, box_bottom))
-        rects_list.extend([
-            dbCreateRect(dlo_gen, lyr, box_left),
-            dbCreateRect(dlo_gen, lyr, box_right),
-        ])
+        if 'w' in guard_ring_shape:
+            rects_list.append(dbCreateRect(dlo_gen, lyr, box_left))
+        if 'e' in guard_ring_shape:
+            rects_list.append(dbCreateRect(dlo_gen, lyr, box_right))
         mlist += rects_list
-        dbLayerOrList(lyr, mlist)
+        if len(mlist) > 1:
+            dbLayerOrList(lyr, mlist)
 
     def draw_well_box(lyr: Layer, xl: float, yb: float, xr: float, yt: float,over: float):
         box = Box(xl - over, yb - over, xr + over, yt + over)
@@ -252,7 +266,10 @@ class guard_ring(DloGen):
         specs('type', 'ntap', 'Guard Ring Type', ChoiceConstraint(['nwell', 'psub', 'nwell_cmos']))  # 'dnwell'
         specs('w', '3.05u', 'Width')
         specs('h', '3.05u', 'Height')
-        specs('shape', 'o', 'Guard Ring Shape', ChoiceConstraint(['o', 'n', 'u']))
+        specs('north', 'yes', 'Include North Side', ChoiceConstraint(['yes', 'no']))
+        specs('south', 'yes', 'Include South Side', ChoiceConstraint(['yes', 'no']))
+        specs('west', 'yes', 'Include West Side', ChoiceConstraint(['yes', 'no']))
+        specs('east', 'yes', 'Include East Side', ChoiceConstraint(['yes', 'no']))
 
     def setupParams(self, params):
         # process parameter values entered by user
@@ -260,7 +277,7 @@ class guard_ring(DloGen):
         self.type = params['type']
         self.w = Numeric(params['w'])*1e6
         self.h = Numeric(params['h'])*1e6
-        self.shape = params['shape']
+        self.shape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side) == 'yes')
 
     def genLayout(self):
         generate_guard_ring(dlo_gen=self,

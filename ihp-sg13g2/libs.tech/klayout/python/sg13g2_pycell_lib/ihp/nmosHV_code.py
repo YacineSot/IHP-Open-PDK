@@ -23,7 +23,6 @@ from .geometry import *
 from .guard_ring_code import GuardRingType
 from .thermal import *
 from .utility_functions import *
-from .via_stack_code import *
 
 import math
 
@@ -47,8 +46,10 @@ class nmosHV(DeviceBase):
         specs('model', model, 'Model name')
 
         specs('w', defW, 'Width')
+        specs('cnt_w_ratio', 100, 'Contact width ratio %', RangeConstraint(1, 100))
         # specs('ws', eng_string(Numeric(defW)/Numeric(defNG)), 'SingleWidth')
         specs('l', defL, 'Length')
+        specs('gate_cnt_ratio', 100, 'Gate Length contact ratio %', RangeConstraint(1, 100))
         # specs('Wmin', minW, 'Wmin')
         # specs('Lmin', minL, 'Lmin')
         specs('ng', defNG, 'Number of Gates')
@@ -69,6 +70,10 @@ class nmosHV(DeviceBase):
         self.w = Numeric(params['w'])*1e6
         self.ng = int(params['ng'])
         self.l = Numeric(params['l'])*1e6
+        self.cnt_w_ratio = Numeric(params['cnt_w_ratio'])
+        self.gate_cnt_ratio = Numeric(params['gate_cnt_ratio'])
+        self.cnt_w_ratio = max(1, min(100, self.cnt_w_ratio))/100
+        self.gate_cnt_ratio = max(1, min(100, self.gate_cnt_ratio))/100
 
         super().setupParams(params)
 
@@ -80,29 +85,6 @@ class nmosHV(DeviceBase):
         # return [GuardRingType.NONE, GuardRingType.DNWELL, GuardRingType.PSUB]
         return [GuardRingType.NONE, GuardRingType.PSUB]
 
-    def genVia(self, vn_columns, vn_rows, offset_x=0, offset_y=0, b_layer = 'GatPoly', t_layer = 'Metal1', use_width = False):
-        back_sx = self.sx if hasattr(self, 'sx') else 0
-        back_sy = self.sy if hasattr(self, 'sy') else 0
-        self.sx = offset_x
-        self.sy = offset_y
-        self.b_layer = b_layer
-        self.t_layer = t_layer
-        self.vn_columns = 0
-        self.vn_rows = 0
-        if not use_width:
-            self.vn_columns = vn_columns
-            self.vn_rows = vn_rows
-        else :
-            self.vn_total_width = vn_columns
-            self.vn_total_height = vn_rows
-        self.vt1_columns = 0
-        self.vt1_rows = 0
-        self.vt2_columns = 0
-        self.vt2_rows = 0
-        vias = via_stack.genLayout(self)
-        self.sx = back_sx
-        self.sy = back_sy
-        return vias
     
     def genDeviceLayout(self):
         w = self.w
@@ -174,6 +156,8 @@ class nmosHV(DeviceBase):
         w = w / ng
         w = GridFix(w)
         l = GridFix(l)
+        cnt_ratio = self.cnt_w_ratio
+        gate_cnt_ratio = self.gate_cnt_ratio
 
         # *************************************************************************
         # *
@@ -227,23 +211,27 @@ class nmosHV(DeviceBase):
         # is metal1 overlapping Activ?
         yMet1 = min(yMet1, ydiff_beg + diffoffset)
         yMet2 = max(yMet2, ydiff_end + diffoffset)
-        dbCreateRect(self, metall_layer, Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2))
 
         # draw contacts and Metall
         diff_width = - (xcont_beg-cont_Activ_overRec) + xcont_end+cont_Activ_overRec
         diff_height = - ydiff_beg + ydiff_end+diffoffset*2
-        contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end + diffoffset * 2, 0,
-                     cont_Activ_overRec, cont_size, cont_dist)
+        ratio_offset = (w - w*cnt_ratio)/2
+        ratio_offset = ratio_offset if diff_height - 2*ratio_offset > 0.3 else (-0.3 + diff_height)/2
+        ratio_offset = GridFix(ratio_offset)
+        cnt_box = Box(xcont_beg-cont_metall_over, yMet1 + ratio_offset, xcont_end+cont_metall_over, yMet2 - ratio_offset)
+        dbCreateRect(self, metall_layer, cnt_box)
+
+        # draw contacts and Metall
+        contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg + ratio_offset, xcont_end, ydiff_end+diffoffset*2 - ratio_offset, 0, cont_Activ_overRec, cont_size, cont_dist)
         ## draw S/D diffusion metal contacts
         if self.s_d_mlayer != 'M1':
             metal = self.s_d_mlayer.replace('M', 'Metal')
             metal = metal.replace('T', 'Top')
-            self.genVia(0, self.w/self.ng, GridFix (diff_width / 2), GridFix (diff_height/2),'Metal1', metal, True)
+            self.genVia(0, w*cnt_ratio, GridFix (diff_width / 2), GridFix (diff_height/2),'Metal1',  metal, True)
         # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
         pinname = 'Sx'+ start_x.__str__() if start_x != 0 else 'S' 
         pinname = pinname + start_y.__str__() if start_y != 0 else pinname
-        MkPin(self, pinname, 3, Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2),
-              metall_layer_pin)
+        MkPin(self, pinname, 3, cnt_box, metall_layer_pin)
 
         # draw source diffusion
         dbCreateRect(self, ndiff_layer, Box(xcont_beg - cont_Activ_overRec, ycont_beg - cont_Activ_overRec,
@@ -263,13 +251,14 @@ class nmosHV(DeviceBase):
                 metal_layer = metal_layer.replace('T','Top')
                 additional_offset = 0.065 if self.l < 0.5 else 0
                 gate_offset = additional_offset - 0.035 if additional_offset > 0 else 0
+                gate_cnt_width = GridFix(l*gate_cnt_ratio)
                 ### Bottom contacts
                 if 'B' in self.gate_connection:
-                    self.genVia(self.l, 0, GridFix(l/2+xpoly_beg), GridFix(-cont_dist_act - cont_size/2 - additional_offset), 'GatPoly', metal_layer, True)
+                    self.genVia(gate_cnt_width, 0, GridFix(l/2+xpoly_beg), GridFix(-cont_dist_act - cont_size/2 - additional_offset), 'GatPoly', metal_layer, True)
                 ### Top contacts
                 if 'T' in self.gate_connection:
                     top_distace  = max(ycont_beg+cont_size+cont_Activ_overRec, ydiff_end)
-                    self.genVia(self.l, 0, GridFix(l/2+xpoly_beg), GridFix(top_distace + cont_dist_act + cont_size/2  + additional_offset), 'GatPoly', metal_layer, True)
+                    self.genVia(gate_cnt_width, 0, GridFix(l/2+xpoly_beg), GridFix(top_distace + cont_dist_act + cont_size/2  + additional_offset), 'GatPoly', metal_layer, True)
             dbCreateRect(self, poly_layer, Box(xpoly_beg, ypoly_beg + diffoffset - gate_offset, xpoly_end, ypoly_end + diffoffset + gate_offset))
 
             ihpAddThermalMosLayer(self, Box(xpoly_beg, ypoly_beg + diffoffset, xpoly_end, ypoly_end + diffoffset), True,
@@ -292,24 +281,22 @@ class nmosHV(DeviceBase):
             ycont_beg = ydiff_beg + cont_Activ_overRec
             ycont_cnt = ycont_beg + diffoffset + diff_cont_offset
             xcont_end = xcont_beg + cont_size
-            dbCreateRect(self, metall_layer,
-                         Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2))
+            cnt_box = Box(xcont_beg-cont_metall_over, yMet1 + ratio_offset, xcont_end+cont_metall_over, yMet2 - ratio_offset)
+            dbCreateRect(self, metall_layer, cnt_box)
             
             diff_width =  (xcont_beg-cont_Activ_overRec) + xcont_end+cont_Activ_overRec
             diff_height = - ydiff_beg + ydiff_end+diffoffset*2
-            contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg, xcont_end, ydiff_end + diffoffset * 2, 0,
-                         cont_Activ_overRec, cont_size, cont_dist)
+            contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg + ratio_offset, xcont_end, ydiff_end+diffoffset*2 - ratio_offset, 0, cont_Activ_overRec, cont_size, cont_dist)
             if self.s_d_mlayer != 'M1':
                 metal = self.s_d_mlayer.replace('M', 'Metal')
                 metal = metal.replace('T', 'Top')
-                self.genVia(0, self.w/self.ng, GridFix (diff_width / 2), GridFix (diff_height/2),'Metal1',  metal, True)
+                self.genVia(0, w*cnt_ratio, GridFix (diff_width / 2), GridFix (diff_height/2),'Metal1',  metal, True)
             
             if onep(i):
                 # got a problem with the pin names, so instead of not using a pin, i just add the position to the pin name. !! to review !!
                 pinname = 'Dx'+ start_x.__str__() if start_x != 0 else 'D'
                 pinname = pinname + start_y.__str__() if start_y != 0 else pinname
-                MkPin(self, pinname, 1, Box(xcont_beg - cont_metall_over, yMet1, xcont_end + cont_metall_over, yMet2),
-                      metall_layer_pin)
+                MkPin(self, pinname, 1, cnt_box, metall_layer_pin)
 
             # draw drain diffusion
             dbCreateRect(self, ndiff_layer, Box(xcont_beg - cont_Activ_overRec, ycont_beg - cont_Activ_overRec,

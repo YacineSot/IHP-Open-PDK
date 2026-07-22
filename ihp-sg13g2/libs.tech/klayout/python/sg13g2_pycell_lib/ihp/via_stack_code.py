@@ -142,7 +142,7 @@ class via_stack(DloGen):
         stack_layers = metal_layers[idx_b:idx_t+1]
         def via_count_from_size(via_size, via_sep, via_total_size, via_num):
             ret = math.floor((via_total_size + via_sep)/(via_size + via_sep)) if via_total_size > 0 else via_num
-            return max(ret -1, 1) if via_num == 0 else ret
+            return max(ret, 1)
 
         if vn_total_width == 0 and self.extra_vias:
             via_size = vn_size

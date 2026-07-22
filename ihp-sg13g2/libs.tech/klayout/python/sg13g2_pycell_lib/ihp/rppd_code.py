@@ -30,59 +30,7 @@ class rppd(ResistorBase):
 
     @classmethod
     def defineParamSpecs(cls, specs):
-        # define parameters and default values
-        techparams = specs.tech.getTechParams()
-        
-        SG13_TECHNOLOGY = techparams["techName"]
-        suffix = ""
-        if 'SG13G2' in SG13_TECHNOLOGY :
-            suffix = 'G2' 
-        if 'SG13G3' in SG13_TECHNOLOGY :
-            suffix = 'G3'
-        
-        CDFVersion = techparams['CDFVersion']
-        model      = techparams['rppd_model']
-        rspec      = techparams['rppd'+suffix+'_rspec']
-        rkspec     = techparams['rppd_rkspec']
-        rzspec     = techparams['rppd_rzspec']
-        defL       = techparams['rppd_defL']
-        defW       = techparams['rppd_defW']
-        defB       = techparams['rppd_defB']
-        defPS      = techparams['rppd_defPS']
-        minL       = techparams['rppd_minL']
-        minW       = techparams['rppd_minW']
-        minPS      = techparams['rppd_minPS']
-        eps        = techparams['epsilon2']
-        
-        specs('cdf_version', CDFVersion, 'CDF Version')
-        specs('Display', 'Selected', 'Display', ChoiceConstraint(['All', 'Selected']))
-        specs('Calculate', 'l', 'Calculate', ChoiceConstraint(['R', 'w', 'l']))
-        specs('Recommendation', 'No', 'Recommendation', ChoiceConstraint(['Yes', 'No']))
-        specs('model', model, 'Model name')
-        
-        resistance = CbResCalc('R', 0, defL, defW, defB, defPS, 'rppd')
-        specs('R', eng_string(resistance), 'R')
-        
-        specs('w',  defW, 'Width')
-        specs('l',  defL, 'Length')
-        specs('b',  defB, 'Bends')
-        specs('ps', defPS, 'Poly Space')
-        
-        imax = CbResCurrent(Numeric(defW), eps, 'rppd'+suffix)
-        specs('Imax', imax, 'Imax')
-        specs('bn', 'sub!', 'Bulk node connection')
-        specs('Wmin', minW, 'Wmin')
-        specs('Lmin', minL, 'Lmin')
-        specs('PSmin', minPS, 'PSmin')
-        specs('Rspec', rspec, 'Rspec [Ohm/sq]')
-        specs('Rkspec', rkspec, 'Rkspec [Ohm/cont]')
-        specs('Rzspec', rzspec, 'Rzspec [Ohm*m]')
-        specs('tc1', '170e-6', 'Temperature coefficient 1')
-        specs('tc2', '0.4e-6', 'Temperature coefficient 2')
-        specs('PWB', 'No', 'PWell Blockage', ChoiceConstraint(['Yes', 'No']))
-        specs('m', '1', 'Multiplier')
-        specs('trise', '0.0', 'Temp rise from ambient')
-
+        cls.res_type   = 'rppd'
         super().defineParamSpecs(specs)
 
     def setupParams(self, params):
@@ -91,8 +39,10 @@ class rppd(ResistorBase):
         self.epsilon = self.techparams['epsilon1']      
         
         self.b = fix(int(params['b']) + self.epsilon)
-        self.w = Numeric(params['w'])*1e6
-        self.l = Numeric(params['l'])*1e6
+        self.w = Numeric(params['w'])
+        self.w = max(self.w, Numeric(techparams['rppd_minW']))*1e6
+        self.l = Numeric(params['l'])
+        self.l = max(self.l, Numeric(techparams['rppd_minL']))*1e6
         self.ps = Numeric(params['ps'])*1e6
         #self.resistance = Numeric(params['R'])
 
@@ -119,7 +69,7 @@ class rppd(ResistorBase):
         contactpush = 0.0
         li_poly_over = 0.0        
         
-        internalCode = True
+        internalCode = self.use_cont_bar
         Cell = self.__class__.__name__
         
         grid = self.techparams['grid']
@@ -279,7 +229,13 @@ class rppd(ResistorBase):
         ypos1 = ypos2+(contactpush+li_salblock+li_poly_over-metover)*dir
         ypos2 = ypos2+(contactpush+consize+li_salblock+li_poly_over+metover)*dir
         # new metal block
-        dbCreateRect(self, metlayer, Box(xpos1+contbar_poly_over-endcap, ypos1, xpos2-contbar_poly_over+endcap, ypos2))
+        met_box = Box(xpos1+contbar_poly_over-endcap, ypos1, xpos2-contbar_poly_over+endcap, ypos2)
+        dbCreateRect(self, metlayer, met_box)
+        # Drow vias to top metal
+        top_metal = self.connections_metal.replace('M', 'Metal').replace('T', 'Top')
+        if self.connections_metal != 'M1':
+            met_dbox = met_box.box
+            self.genVia(self.w, 0, GridFix (met_dbox.center().x), GridFix (met_dbox.center().y),'Metal1',  top_metal, True)
         
         plus_pin_box = Box(xpos1+contbar_poly_over-endcap, ypos1,
                            xpos2-contbar_poly_over+endcap, ypos2)
@@ -433,22 +389,29 @@ class rppd(ResistorBase):
         # contacts
         # codeblock for internal PCel
         if drawbar :  # can only be in internal code
-            dbCreateRect(self, locintlayer, Box(xpos1+contbar_poly_over, ypos2+(contactpush+li_salblock+li_poly_over+lcor)*dir,
-                                                xpos2-contbar_poly_over, ypos2+(contactpush+consize+li_salblock+li_poly_over+lcor)*dir))
+            cont_box = Box(xpos1+contbar_poly_over, ypos2+(contactpush+li_salblock+li_poly_over+lcor)*dir,
+                                                xpos2-contbar_poly_over, ypos2+(contactpush+consize+li_salblock+li_poly_over+lcor)*dir)
+            dbCreateRect(self, locintlayer, cont_box)
         else :
             for i in range(ncont):
-                dbCreateRect(self, locintlayer, Box(xpos1+polyover+distr+i*distc,
+                cont_box = Box(xpos1+polyover+distr+i*distc,
                                                     ypos2+(lcor+contactpush+li_salblock+li_poly_over)*dir,
                                                     xpos1+polyover+distr+i*distc+consize,
-                                                    ypos2+(lcor+contactpush+consize+li_salblock+li_poly_over)*dir))
+                                                    ypos2+(lcor+contactpush+consize+li_salblock+li_poly_over)*dir)
+                dbCreateRect(self, locintlayer, cont_box)
         # **************************************************************
         # Metal and Pin
 
         # metal block
-        dbCreateRect(self, metlayer, Box(xpos1+contbar_poly_over-endcap, 
+        met_box = Box(xpos1+contbar_poly_over-endcap, 
                                          ypos2+(contactpush+li_salblock+li_poly_over-metover+lcor)*dir,
                                          xpos2-contbar_poly_over+endcap, 
-                                         ypos2+(contactpush+consize+li_salblock+li_poly_over+metover+lcor)*dir))
+                                         ypos2+(contactpush+consize+li_salblock+li_poly_over+metover+lcor)*dir)
+        dbCreateRect(self, metlayer, met_box)
+        # Drow vias to top_metal
+        if self.connections_metal != 'M1':
+            met_dbox = met_box.box
+            self.genVia(self.w, 0, GridFix (met_dbox.center().x), GridFix (met_dbox.center().y),'Metal1',  top_metal, True)
         
         minus_pin_box = Box(xpos1+contbar_poly_over-endcap,
                             ypos2+(contactpush+li_salblock+li_poly_over-metover+lcor)*dir,

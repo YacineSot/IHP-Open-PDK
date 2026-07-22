@@ -31,60 +31,15 @@ class rsil(ResistorBase):
 
     @classmethod
     def defineParamSpecs(self, specs):
-        # define parameters and default values
-        techparams = specs.tech.getTechParams()
-
-        CDFVersion = techparams['CDFVersion']
-        model      = techparams['rsil_model']
-        rspec      = techparams['rsilG2_rspec']
-        rkspec     = techparams['rsil_rkspec']
-        rzspec     = techparams['rsil_rzspec']
-        defL       = techparams['rsil_defL']
-        defW       = techparams['rsil_defW']
-        defPS      = techparams['rsil_defPS']
-        minL       = techparams['rsil_minL']
-        minW       = techparams['rsil_minW']
-        minPS      = techparams['rsil_minPS']
-        eps        = techparams['epsilon2']
-        
-        defR   = '17.248'
-        
-        specs('cdf_version', CDFVersion, 'CDF Version')
-        specs('Display', 'Selected', 'Display', ChoiceConstraint(['All', 'Selected']))
-        specs('Calculate', 'l', 'Calculate', ChoiceConstraint(['R', 'w', 'l']))
-        #specs('Recommendation', 'No', 'Recommendation', ChoiceConstraint(['Yes', 'No'])) -> display = nil
-        specs('model', model, 'Model name')
-
-        resistance = CbResCalc('R', 0, defL, defW, 0, defPS, 'rsil')
-        specs('R', eng_string(resistance), 'R')
-
-        specs('w',  defW, 'Width')
-        specs('l',  defL, 'Length')
-        specs('ps', defPS, 'Poly Space')
-
-        imax = CbResCurrent(Numeric(defW), Numeric(eps), 'rsilG2')
-        specs('Imax', imax, 'Imax')
-        specs('bn', 'sub!', 'Bulk node connection')
-        specs('Wmin', minW, 'Wmin')
-        specs('Lmin', minL, 'Lmin')
-        specs('PSmin', minPS, 'PSmin')
-        specs('Rspec', rspec, 'Rspec [Ohm/sq]')
-        specs('Rkspec', rkspec, 'Rkspec [Ohm/cont]')
-        specs('Rzspec', rzspec, 'Rzspec [Ohm*m]')
-        specs('tc1', '3100e-6', 'Temperature coefficient 1')
-        specs('tc2', '0.30e-6', 'Temperature coefficient 2')
-        # GenPWB TBD
-        #specs('PWB', 'No', 'PWell Blockage', ChoiceConstraint(['Yes', 'No']))
-        specs('m', '1', 'Multiplier')
-        specs('trise', '0.0', 'Temp rise from ambient')
+        self.res_type   = 'rsil'
 
         super().defineParamSpecs(specs)
 
     def setupParams(self, params):
         # process parameter values entered by user
         self.params = params
-        self.l = Numeric(params['l'])
-        self.w = Numeric(params['w'])
+        self.l = max(Numeric(params['l']),Numeric(params['Lmin']))
+        self.w = max(Numeric(params['w']), Numeric(params['Wmin']))
         self.ps = Numeric(params['ps'])
         self.resistance = Numeric(params['R'])
 
@@ -141,7 +96,7 @@ class rsil(ResistorBase):
         #* Main body of code
         #*
         #************************************************************************
-        internalCode = True
+        internalCode = self.use_cont_bar
         gridnumber = 0.0
         contoverlay = 0.0
         l = Numeric(l)*1e6
@@ -210,7 +165,14 @@ class rsil(ResistorBase):
         # draw MetalRect and Pin of bottom Contact Area    
         ypos1 = ypos2+(li_poly_over-metover)*dir
         ypos2 = ypos2+(consize+li_poly_over+metover)*dir
-        dbCreateRect(self, metlayer, Box(xpos1+contbar_poly_over-endcap, ypos1, xpos2-contbar_poly_over+endcap, ypos2))
+        met_box = Box(xpos1+contbar_poly_over-endcap, ypos1, xpos2-contbar_poly_over+endcap, ypos2)
+        dbCreateRect(self, metlayer, met_box)
+        
+        # Drow vias to top_metal
+        top_metal = self.connections_metal.replace('M', 'Metal').replace('T', 'Top')
+        if self.connections_metal != 'M1':
+            met_dbox = met_box.box
+            self.genVia(w, 0, GridFix (met_dbox.center().x), GridFix (met_dbox.center().y),'Metal1',  top_metal, True)
 
         plus_pin_box = Box(xpos1+contbar_poly_over-endcap, ypos1,
                            xpos2-contbar_poly_over+endcap, ypos2)
@@ -262,8 +224,13 @@ class rsil(ResistorBase):
         # new metal block   
         ypos1 = ypos2+(li_poly_over-metover)*dir
         ypos2 = ypos2+(consize+li_poly_over+metover)*dir
-        dbCreateRect(self, metlayer, Box(xpos1+contbar_poly_over-endcap, ypos1, xpos2-contbar_poly_over+endcap, ypos2))
+        met_box = Box(xpos1+contbar_poly_over-endcap, ypos1, xpos2-contbar_poly_over+endcap, ypos2)
+        dbCreateRect(self, metlayer, met_box)
 
+        # Drow vias to top_metal
+        if self.connections_metal != 'M1':
+            met_dbox = met_box.box
+            self.genVia(w, 0, GridFix (met_dbox.center().x), GridFix (met_dbox.center().y),'Metal1',  top_metal, True)
         minus_pin_box = Box(xpos1+contbar_poly_over-endcap, ypos1,
                             xpos2-contbar_poly_over+endcap, ypos2)
         MkPin(self, f"MINUS{index}", 2, minus_pin_box, metlayer)

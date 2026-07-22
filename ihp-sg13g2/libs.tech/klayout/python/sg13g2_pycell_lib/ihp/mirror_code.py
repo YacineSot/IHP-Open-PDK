@@ -50,6 +50,7 @@ class mirror(DeviceBase):
         specs('l' ,   '3u', 'Length')
         specs('connect_sources', 'Yes', 'Connect sources?', ChoiceConstraint(['No', 'Yes']))
         specs('connect_gates', 'Yes', 'Connect gates?', ChoiceConstraint(['No', 'Yes']))
+        specs('s_d_mlayer', 'M2', 'S/D Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
         #specs('Wmin', minW, 'Wmin')
         #specs('Lmin', minL, 'Lmin')
         #specs('ng',   defNG, 'Number of Gates')
@@ -69,6 +70,7 @@ class mirror(DeviceBase):
         # process parameter values entered by user
         self.w  = Numeric(params['w'])*1e6
         self.l  = Numeric(params['l'])*1e6
+        self.s_d_mlayer = params['s_d_mlayer']
         self.ng = 1
         self.nd = int(params['n_dummies'])
         self.model_type = params['model_type']
