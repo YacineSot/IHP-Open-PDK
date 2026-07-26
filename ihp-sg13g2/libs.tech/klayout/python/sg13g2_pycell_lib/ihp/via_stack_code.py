@@ -388,3 +388,4 @@ class via_stack(DloGen):
                     for j in range(rows):
                         y0 = j * via_sep + j * via_size - via_array_w_y/2 + offset_y
                         dbCreateRect(self, via_layer, Box(x0, y0, x0 + via_size, y0 + via_size))
+        return metal_box

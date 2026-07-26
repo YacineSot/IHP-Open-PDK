@@ -319,7 +319,7 @@ class mos_base(DeviceBase):
                 MkPin(self, pinname, 3, cnt_box, metall_layer)
             else:
                 MkPin(self, pinname, 3, cnt_box, metall_layer_pin)
-        except: print(f"Pin {pinname} already exist")
+        except: pass ##print(f"Pin {pinname} already exist")
 
         if typ == 'N' :
             dbCreateRect(self, ndiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec))
@@ -337,8 +337,8 @@ class mos_base(DeviceBase):
             
             ## Drow gate poly        
             gate_box = Box(xpoly_beg, ypoly_beg+diffoffset-gate_offset, xpoly_end, ypoly_end+diffoffset+gate_offset)
-            dbCreateRect(self, poly_layer, gate_box)
             self.gate_box = gate_box
+            dbCreateRect(self, poly_layer, gate_box)
             ## Drow gate contacts
             if self.gate_connection != 'none':
                 metal_layer = self.gate_metal.replace('M', 'Metal').replace('T','Top')
@@ -348,12 +348,15 @@ class mos_base(DeviceBase):
                 ### Bottom contacts
                 if 'B' in self.gate_connection:
                     # self.genVia(gate_cnt_width, 0, GridFix(l/2+xpoly_beg), GridFix(-cont_dist_act - cont_size/2 - additional_offset), 'GatPoly', metal_layer, True)
-                    self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.bottom), 'GatPoly', metal_layer, True, 'centerTop')
+                    gate_cnt_box = self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.bottom), 'GatPoly', metal_layer, True, 'centerTop')
+                    self.gate_box_b = gate_cnt_box
+                    
                 ### Top contacts
                 if 'T' in self.gate_connection:
                     # top_distace  = max(ycont_beg+cont_size+cont_Activ_overRec, ydiff_end)
                     # self.genVia(gate_cnt_width, 0, GridFix(l/2+xpoly_beg), GridFix(top_distace + cont_dist_act + cont_size/2  + additional_offset), 'GatPoly', metal_layer, True)
-                    self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.top), 'GatPoly', metal_layer, True, 'centerBottom')
+                    gate_cnt_box = self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.top), 'GatPoly', metal_layer, True, 'centerBottom')
+                    self.gate_box_t = gate_cnt_box
             
             if typ == 'P' and not hv:
                 ihpAddThermalMosLayer(self, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end + cont_size /2 , ypoly_end+diffoffset), True, 'pmos')
@@ -376,7 +379,7 @@ class mos_base(DeviceBase):
                         MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), p_layer_pin)
                     else:
                         MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer_pin)
-                except: print(f'Pinname {pinname} already exists')
+                except: pass ##print(f'Pinname {pinname} already exists')
 
             # draw the second cont row
             xcont_beg = xpoly_end+gatpoly_cont_dist
@@ -400,7 +403,7 @@ class mos_base(DeviceBase):
                         MkPin(self, pinname, 1, cnt_box, metall_layer if not hv else metall_layer_pin)
                     else:
                         MkPin(self, pinname, 1, cnt_box, metall_layer_pin)
-                except: print(f"Pinname {pinname} already exists")
+                except: pass ## print(f"Pinname {pinname} already exists")
 
             if typ == 'N' :
                 dbCreateRect(self, ndiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec))
@@ -422,7 +425,7 @@ class mos_base(DeviceBase):
         pinname = 'B'
         try:
             MkPin(self, pinname, 4, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec), Layer('Substrate', 'drawing'))
-        except: print(f'Pinname {pinname} already exists')
+        except: pass #print(f'Pinname {pinname} already exists')
 
         # draw Thick Gate Oxide
         if hv :
