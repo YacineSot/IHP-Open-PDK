@@ -56,6 +56,9 @@ class via_stack(DloGen):
     
     
     def genLayout(self):
+        
+        if not hasattr(self, 'origin'):
+            self.origin = 'centerCenter'
 
         b_layer = self.b_layer
         t_layer = self.t_layer
@@ -80,7 +83,7 @@ class via_stack(DloGen):
         #*
         #************************************************************************
 
-        epsilon = techparams['epsilon1']
+        epsilon = self.techparams['epsilon1']
         cont_size = self.techparams['Cnt_a']
         cont_enc1 = self.techparams['Cnt_c']
         cont_enc2 = self.techparams['M1_c1']
@@ -88,29 +91,29 @@ class via_stack(DloGen):
         cont_sep1 = self.techparams['Cnt_b']
         cont_sep2 = self.techparams['Cnt_b1']
 
-        v1_size = techparams['V1_a']
-        v1_sep1 = techparams['V1_b']
-        v1_sep2 = techparams['V1_b1']
-        v1_enc = techparams['V1_c1']
-        v1_enc1 = techparams['V1_c']
+        v1_size = self.techparams['V1_a']
+        v1_sep1 = self.techparams['V1_b']
+        v1_sep2 = self.techparams['V1_b1']
+        v1_enc = self.techparams['V1_c1']
+        v1_enc1 = self.techparams['V1_c']
 
-        vn_size = techparams['Vn_a']
-        vn_sep1 = techparams['Vn_b']
-        vn_sep2 = techparams['Vn_b1']
-        vn_enc = techparams['Vn_c1']
-        vn_enc1 = techparams['Vn_c']
+        vn_size = self.techparams['Vn_a']
+        vn_sep1 = self.techparams['Vn_b']
+        vn_sep2 = self.techparams['Vn_b1']
+        vn_enc = self.techparams['Vn_c1']
+        vn_enc1 = self.techparams['Vn_c']
 
         # TopVia1 parameters for M5-TM1 connection
         # TopVia1 is larger than regular vias (0.42um vs 0.19um)
-        tv1_size = techparams.get('TV1_a', 0.42)  # TopVia1 size
-        tv1_sep = techparams.get('TV1_b', 0.42)   # TopVia1 spacing
-        tv1_enc = techparams.get('TV1_c', 0.10)   # Metal4 enclosure of TopVia1
-        tm1_enc = techparams.get('TV1_d', 0.42)   # TopMetal1 enclosure of TopVia1
+        tv1_size = self.techparams.get('TV1_a', 0.42)  # TopVia1 size
+        tv1_sep = self.techparams.get('TV1_b', 0.42)   # TopVia1 spacing
+        tv1_enc = self.techparams.get('TV1_c', 0.10)   # Metal4 enclosure of TopVia1
+        tm1_enc = self.techparams.get('TV1_d', 0.42)   # TopMetal1 enclosure of TopVia1
         # TopVia2
-        tv2_size = techparams.get('TV2_a', 0.42)  # TopVia1 size
-        tv2_sep = techparams.get('TV2_b', 0.42)   # TopVia1 spacing
-        tv2_enc = techparams.get('TV2_c', 0.10)   # Metal4 enclosure of TopVia1
-        tm2_enc = techparams.get('TV2_d', 0.42)   # TopMetal1 enclosure of TopVia1
+        tv2_size = self.techparams.get('TV2_a', 0.42)  # TopVia1 size
+        tv2_sep = self.techparams.get('TV2_b', 0.42)   # TopVia1 spacing
+        tv2_enc = self.techparams.get('TV2_c', 0.10)   # Metal4 enclosure of TopVia1
+        tm2_enc = self.techparams.get('TV2_d', 0.42)   # TopMetal1 enclosure of TopVia1
         #*************************************************************************
         #*
         #* Device Specific Design Rule Definitions
@@ -175,6 +178,97 @@ class via_stack(DloGen):
         tv1_rows_from_size = via_count_from_size(tv1_size, tv1_sep, vn_total_height, vn_rows)
         tv2_cols_from_size = via_count_from_size(tv2_size, tv2_sep, vn_total_width, vn_columns)
         tv2_rows_from_size = via_count_from_size(tv2_size, tv2_sep, vn_total_height, vn_rows)
+
+        # Pre-calculate maximum box dimensions for the origin offset logic
+        max_box_w = 0
+        max_box_h = 0
+        for layer in stack_layers:
+            via_enc1 = None
+            if layer in ['Activ', 'GatPoly']:
+                columns = cont_cols_from_size
+                rows = cont_rows_from_size
+                via_size = cont_size
+                via_enc = cont_enc1
+                via_sep = cont_sep1 if (columns<4 and rows<4) else cont_sep2
+                w_x = (columns * via_size + (columns - 1) * via_sep)
+                w_y = (rows * via_size + (rows - 1) * via_sep)
+            elif t_layer == 'Metal1':
+                columns = cont_cols_from_size
+                rows = cont_rows_from_size
+                via_size = cont_size
+                via_sep = cont_sep1 if (columns<4 and rows<4) else cont_sep2
+                via_enc = cont_enc2
+                via_enc1 = cont_enc3
+                w_x = (columns * via_size + (columns - 1) * via_sep)
+                w_y = (rows * via_size + (rows - 1) * via_sep)
+            elif layer == 'Metal1':
+                columns = v1_cols_from_size
+                rows = v1_rows_from_size
+                via_size = v1_size
+                via_sep = v1_sep1 if (columns<4 and rows<4) else v1_sep2
+                via_enc = v1_enc
+                via_enc1 = v1_enc1
+                w_x = (columns * via_size + (columns - 1) * via_sep)
+                w_y = (rows * via_size + (rows - 1) * via_sep)
+            elif layer == 'TopMetal1':
+                columns = tv1_cols_from_size
+                rows = tv1_rows_from_size
+                via_size = tv1_size
+                via_sep = tv1_sep
+                via_enc = tm1_enc
+                w_x = (columns * via_size + (columns - 1) * via_sep)
+                w_y = (rows * via_size + (rows - 1) * via_sep)
+            elif layer == 'TopMetal2':
+                columns = tv2_cols_from_size
+                rows = tv2_rows_from_size
+                via_size = tv2_size
+                via_sep = tv2_sep
+                via_enc = tm2_enc
+                w_x = (columns * via_size + (columns - 1) * via_sep)
+                w_y = (rows * via_size + (rows - 1) * via_sep)
+            elif layer == 'Metal5' and 'TopMetal1' in stack_layers:
+                via_enc = tm1_enc
+                w_x = (tv1_cols_from_size * tv1_size + (tv1_cols_from_size - 1) * tv1_sep)
+                w_y = (tv1_rows_from_size * tv1_size + (tv1_rows_from_size - 1) * tv1_sep)
+            else:
+                columns = vn_cols_from_size
+                rows = vn_rows_from_size
+                via_size = vn_size
+                via_sep = vn_sep1 if (columns<4 and rows<4) else vn_sep2
+                via_enc = vn_enc
+                via_enc1 = vn_enc1
+                w_x = (columns * via_size + (columns - 1) * via_sep)
+                w_y = (rows * via_size + (rows - 1) * via_sep)
+            
+            via_enc1 = via_enc if via_enc1 == None else via_enc1
+            
+            box_w = w_x/2 + via_enc 
+            box_h = w_y/2 + via_enc1 
+            if layer in ['Activ', 'GatPoly']:
+                if vn_total_width != 0:
+                    box_w = max(box_w, vn_total_width/2)
+                if vn_total_height != 0:
+                    box_h = max(vn_total_height/2, box_h)
+                    
+            if box_w > max_box_w: max_box_w = box_w
+            if box_h > max_box_h: max_box_h = box_h
+            
+        # Apply origin shifts based on the requested origin string
+        orig = self.origin.lower()
+        shift_x = 0
+        shift_y = 0
+        if 'left' in orig:
+            shift_x = max_box_w
+        elif 'right' in orig:
+            shift_x = -max_box_w
+            
+        if 'bottom' in orig:
+            shift_y = max_box_h
+        elif 'top' in orig:
+            shift_y = -max_box_h
+            
+        offset_x += shift_x
+        offset_y += shift_y
 
         for layer in stack_layers:
             via_enc1 = None

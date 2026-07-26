@@ -28,6 +28,8 @@ from .device_base_code import DeviceBase
 from .via_stack2_code import via_stack
 from .nmosHV_code import nmosHV
 from .pmosHV_code import pmosHV
+import pya
+from pya import Region
 
 
 class mirror(DeviceBase):
@@ -42,26 +44,27 @@ class mirror(DeviceBase):
         minL       = techparams['nmos_minL']
         minW       = techparams['nmos_minW']
 
-        specs('cdf_version', CDFVersion, 'CDF Version')
+        specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint())
         #specs('Display', 'Selected', 'Display', ChoiceConstraint(['All', 'Selected']))
 
         specs('w' , '5u', 'Width')
         #specs('ws',   eng_string(Numeric(defW)/Numeric(defNG)), 'SingleWidth')
         specs('l' ,   '3u', 'Length')
-        specs('connect_sources', 'Yes', 'Connect sources?', ChoiceConstraint(['No', 'Yes']))
-        specs('connect_gates', 'Yes', 'Connect gates?', ChoiceConstraint(['No', 'Yes']))
+        specs('connect_sources', 'Yes', 'Connect sources?', BooleanConstraint())
+        specs('connect_gates', 'Yes', 'Connect gates?', BooleanConstraint())
         specs('s_d_mlayer', 'M2', 'S/D Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
+        specs('gate_mlayer', 'M2', 'Gate Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
         #specs('Wmin', minW, 'Wmin')
         #specs('Lmin', minL, 'Lmin')
         #specs('ng',   defNG, 'Number of Gates')
 
         #specs('m', '1', 'Multiplier')
         #specs('trise', '', 'Temp rise from ambient')
-        specs('pairs_distance', '0.21u', 'Diffrential pairs distance')
-        specs('dummies_distance', '0.3u', 'Dummies distance')
-        specs('n_dummies', 1, 'Number of dummy fingers on each side')
-        specs('n_rows', 2, 'Number of rows')
-        # specs('n_cells', 2, 'Number of cells')
+        specs('horizontal_distance', '0.26u', 'Horizental distance')
+        specs('vertical_distance', '0.3u', 'Vertical distance')
+        specs('connection_metal_width', '0.5u', 'Connection metal width')
+        specs('connection_metal_distance', '0.5u', 'Connection metal distance')
+        specs('layout_pattern', 'AB|BA', 'Layout Pattern')
         specs('model_type', 'nmos', 'Model Type', ChoiceConstraint(['nmos', 'pmos', 'nmosHV', 'pmosHV']))
 
         super().defineParamSpecs(specs)
@@ -72,20 +75,18 @@ class mirror(DeviceBase):
         self.l  = Numeric(params['l'])*1e6
         self.s_d_mlayer = params['s_d_mlayer']
         self.ng = 1
-        self.nd = int(params['n_dummies'])
         self.model_type = params['model_type']
-        nr = int(params['n_rows'])
-        nc = 2 # int(params['n_cells'])
-        self.nr = nr if nr > 2 else 2
-        self.nc = nc if nc > 2 else 2
         self.params = params
-        self.pd = Numeric(params['pairs_distance']) * 1e6
-        self.dd = Numeric(params['dummies_distance']) * 1e6
-        self.cg = params['connect_gates'] == 'Yes'
-        self.cs = params['connect_sources'] == 'Yes'
-        self.s_d_mlayer = 'M1'
-        self.gate_connection = 'none'
-        self.gate_metal = 'M1'
+        self.connect_gates = params['connect_gates']
+        self.connect_sources = params['connect_sources']
+        self.s_d_mlayer = params['s_d_mlayer']
+        self.gate_connection = 'T-B'
+        self.gate_metal = params['gate_mlayer']
+        self.layout_pattern = params['layout_pattern']
+        self.horizontal_distance = Numeric(params['horizontal_distance'])*1e6
+        self.vertical_distance = Numeric(params['vertical_distance'])*1e6
+        self.connection_width = Numeric(params['connection_metal_width'])*1e6
+        self.connections_distance = Numeric(params['connection_metal_distance'])*1e6
 
         super().setupParams(params)
 
@@ -122,26 +123,34 @@ class mirror(DeviceBase):
             max_top = max(max_top, bbox.top)
         return (min_left, min_bottom, max_right, max_top)
 
-    def genVia(self, vn_columns, vn_rows, offset_x=0, offset_y=0, b_layer = 'GatPoly', t_layer = 'Metal1'):
-        self.sx = offset_x
-        self.sy = offset_y
-        self.b_layer = b_layer
-        self.t_layer = t_layer
-        self.vn_columns = vn_columns
-        self.vn_rows = vn_rows
-        self.vt1_columns = 0
-        self.vt1_rows = 0
-        self.vt2_columns = 0
-        self.vt2_rows = 0
-        return via_stack.genLayout(self)
     
-    def genMos(self, x_pos, y_pos):
-        self.sx = x_pos
-        self.sy = y_pos
-        if self.model_type == 'nmos' :
-            return nmos.genDeviceLayout(self)
-        else:
-            return pmos.genDeviceLayout(self)
+    def genMos(self,main_device, x_pos, y_pos):
+        device = main_device()
+        guard_ring_type = 'nwell' if 'p' in self.model_type.lower() else 'psub'
+        guard_ring_type = 'none' if x_pos != 0 else guard_ring_type
+        params = {'w': self.w, 
+                    'l': self.l, 
+                    'ng': 1, 
+                    's_d_mlayer': 'M3', 
+                    'gate_connection': 'T-B',
+                    'gate_metal': 'M1', 
+                    'cnt_w_ratio': 90,
+                    'gate_cnt_ratio': 100,
+                    'guardRingType' : guard_ring_type,
+                    'guardRingDistance': '0.6u',
+                    'north': False,
+                    'south': False,
+                    'west': True,
+                    'east': True
+                }
+        device.tech = self.tech
+        device._getCurrentCellContext = self._getCurrentCellContext
+        device.sx = x_pos
+        device.sy = y_pos
+        device.setupParams(params)
+        device.genDeviceLayout()
+        return device
+    
 
 
     def genDeviceLayout(self):
@@ -177,6 +186,7 @@ class mirror(DeviceBase):
         metall_layer = Layer('Metal1', 'drawing')
         metal2_layer = Layer('Metal2', 'drawing')
         metal3_layer = Layer('Metal3', 'drawing')
+        metal4_layer = Layer('Metal4', 'drawing')
         tgo_layer = Layer('ThickGateOx', 'drawing') # 44
         pdiffx_layer = Layer('pSD', 'drawing')      # 14
         metall_layer_pin = Layer('Metal1', 'pin')
@@ -230,154 +240,202 @@ class mirror(DeviceBase):
             main_device = pmosHV
         
         l_com = self.l;
-        if self.model_type.__contains__('pmos'):
-            self.w = self.w * 1e-6
-            self.l = self.l * 1e-6
-        self.sx = 0
-        via_start_offset = 0.34
-        self.sy = 0
-        device_step_x = 0;
-        device_step_y = 0;
-        y_offset = 1
-        x_offset = self.pd
-        contact_distance = 0.3
-        max_right = 0
-        min_bottom_step = 0;
-        i = 0
-        device_width = 0
-        device_height = 0
-        via_step_x_start = via_start_offset
-        via_step_x = via_step_x_start
-        via_width = 0;
-        met_via_width = 0;
-        met_via_height = 0;
-        via_height = 0;
-        via_shift = 0;
-        left_origin_distance = 0;
-        via_count = 1 if l_com < 0.7 else math.ceil(l_com/0.45)
-        metal_via_count = math.ceil(2*via_count/3)
-
-
-
-        for i in range(self.nr):
-            for j in range(self.nc):
-                via_step_x = via_step_x_start + device_step_x*j
-                self.sy = device_step_y * (i)
-                device = main_device.genDeviceLayout(self)
-                (min_left, min_bottom, max_right, max_top) = self.getMaxDeviceSize()
-                if i == 0 and j == 0:
-                    left_origin_distance = min_left
-                if min_bottom_step != 0:
-                    if device_width == 0:
-                        device_width = device_step_x - x_offset
-                        device_height = max_top - min_bottom
-                    via_shift = l_com - via_width if j+1 > self.nc/2 else 0
-                    if i > 0 and self.cg:
-                        device_y_offset = - gatpoly_Activ_over + device_step_y*(i-1)
-                        via_y_offset = device_y_offset - gatpoly_Activ_over/2
-                        #via_2_y_offset = - y_offset + 0.41 + min_bottom_step + device_step_y*(i-1)
-                        via_x_offset = via_step_x + via_shift
-                        width, height = self.genVia( via_count ,2,via_x_offset, via_y_offset)
-                        shift_value = via_width - met_via_width;
-                        via_shift = 0 if j < self.nc/2 else shift_value ;
-                        (met_via_width, met_via_height) = self.genVia(metal_via_count, 2, via_x_offset + via_shift, via_y_offset, 'Metal1', 'Metal2')
-                        via_next_step_x = via_step_x_start + device_step_x*(j+1)
-                        if via_width == 0:
-                            via_width = width
-                            via_height = height
-                        if j%2 == 0:
-                            # connect met vias
-                            met2_box = Box(via_x_offset, via_y_offset,via_next_step_x + l_com, via_y_offset - via_height )
-                            dbCreateRect(self, metal2_layer, met2_box)
-                            # connect gat poly
-                            gat_box = Box(via_step_x, device_y_offset, via_step_x + l_com + device_step_x*(j+1), device_y_offset - y_offset + gatpoly_Activ_over)
-                            dbCreateRect(self, poly_layer, gat_box)
-                    # link sources together
-                    if self.cs and i == self.nr -1:
-                        met1_box = Box(device_step_x - x_offset - cont_Activ_overRec + left_origin_distance,  device_step_y*i - self.guardRingDistance - gatpoly_Activ_over, device_step_x + cont_Activ_overRec, - device_step_y - y_offset + self.guardRingDistance)
-                        dbCreateRect(self, metall_layer, met1_box)
-
-                print(min_left,' , ', min_bottom, '  ,  ', max_right,' , ', max_top)
-                device_step_x = max_right + x_offset if device_step_x == 0 else device_step_x
-                print ("device step x: ", device_step_x)
-                self.sx = device_step_x * (j+1)
-            (min_left, min_bottom, max_right, max_top) = self.getMaxDeviceSize()
-            min_bottom_step = min_bottom if i == 0 else min_bottom_step;
-            device_step_y = -max_top - y_offset + (-min_bottom_step - gatpoly_Activ_over) if device_step_y == 0 else device_step_y
-            print ("device step y: ", device_step_y)
-            self.sx = 0
+        # if self.model_type.__contains__('pmos'):
+        #     self.w = self.w * 1e-6
+        #     self.l = self.l * 1e-6
+        (width, height) = main_device.get_dimensions(self.w, self.l, self.ng, self.techparams)
+        self.layout_pattern = ''.join([char for char in self.layout_pattern if char.isalpha() or char == '|'])
+        cells = self.layout_pattern.upper().split("|")
+        cells = cells[::-1] ## because we start drowing from the bottom to the top
+        different_devices = set(self.layout_pattern.replace('|', ''))
+        print(f"devices are: {different_devices}")
+        different_devices_count = len(different_devices)
+        contact_list = {}
         
-        x_offset = -contact_distance + left_origin_distance;
-        ## generate dummies
-        self.dd = self.dd
-        distance_from_origin = -min_left;
-        min_with_dummies =  - ( device_width + x_offset) * self.nd - self.dd + x_offset;
-        device_step_x = device_width + x_offset
-        self.sx = min_with_dummies
-        via_step_x_start = via_start_offset + min_with_dummies
-        via_step_x = via_step_x_start
-        for i in range(self.nr):
-            for j in range(self.nd):
-                self.sy = device_step_y * (i)
-                via_step_x = via_step_x_start + device_step_x*j
-                device = main_device.genDeviceLayout(self)
-                if i > 0 :
-                    via_2_step_y = - y_offset + 0.41 + min_bottom_step + device_step_y*(i-1)
-                    device_y_offset = - gatpoly_Activ_over + device_step_y*(i-1)
-                    via_step_y = device_y_offset - gatpoly_Activ_over/2
-                    via_y_offset = device_y_offset - gatpoly_Activ_over/2
-                    (width, height) = self.genVia( via_count ,2,via_step_x, via_y_offset)
-                    if via_width == 0:
-                        via_width = width
-                        via_height = height
-                    gat_box = Box(via_step_x, device_y_offset, via_step_x + l_com, via_2_step_y - via_height)
-                    dbCreateRect(self, poly_layer, gat_box)
-                self.sx = min_with_dummies + device_step_x * (j+1)
-            self.sx = min_with_dummies
-        (min_left_org, min_bottom_org, max_right_org, max_top_org) = self.getMaxDeviceSize()
-        guard_ring_offset = self.guardRingDistance
-        met_box = Box(min_with_dummies - guard_ring_offset - distance_from_origin, max_top if self.cs else max_top + guard_ring_offset , -self.dd-distance_from_origin, min_bottom if self.cs else min_bottom - guard_ring_offset)
-        dbCreateRect(self, metall_layer,met_box)
-        max_width_dummies = max_right_org + self.dd ;
-        via_step_x_start = via_start_offset + max_width_dummies
-        via_step_x = via_step_x_start
-        via_shift = l_com - via_width
-        for i in range(self.nr):
-            for j in range(self.nd):
-                self.sx = max_width_dummies +  device_step_x * j
-                self.sy = device_step_y * (i)
-                via_step_x = via_step_x_start + device_step_x*j
-                device = main_device.genDeviceLayout(self)
-                if i > 0 :
-                    via_2_step_y = - y_offset + 0.41 + min_bottom_step + device_step_y*(i-1)
-                    device_y_offset = - gatpoly_Activ_over + device_step_y*(i-1)
-                    via_y_offset = device_y_offset - gatpoly_Activ_over/2
-                    self.genVia( via_count ,2,via_step_x + via_shift, via_y_offset)
-                    gat_box = Box(via_step_x, device_y_offset, via_step_x + l_com, via_2_step_y - via_height)
-                    dbCreateRect(self, poly_layer, gat_box)
+        connections_list = {}
+        for unique_dev in different_devices:
+            connections_list[unique_dev] = {
+                'drain_h': Region(),
+                'drain_v': Region(),
+                'source_h': Region(),
+                'source_v': Region(),
+                'gate': Region()
+            }
         
-        (min_left, min_bottom, max_right, max_top) = self.getMaxDeviceSize()
-        th_offset = guard_ring_offset if self.cs else 0
-        th_box = Box(min_left_org, max_top_org - th_offset, max_right, min_bottom_org + th_offset)
-        if self.model_type.__contains__('HV'):
-            dbCreateRect(self, tgo_layer, th_box)
-        if self.model_type.__contains__('pmos'):
-            dbCreateRect(self, pdiffx_layer, th_box)
+        # Calculate widths for the gaps
+        # Outer gaps (leftmost and rightmost, bottommost and topmost) only contain 'different_devices_count' lines (e.g. 2 lines)
+        N_dev = different_devices_count
+        x_outer = 2*self.horizontal_distance + N_dev*self.connection_width + self.connections_distance * (N_dev-1)
+        x_outer = x_outer if len(cells) > 1 else 0
+        y_outer = 2*self.vertical_distance + N_dev*self.connection_width + self.connections_distance * (N_dev-1)
+        
+        # Inner gaps (between devices) contain 2 * 'different_devices_count' lines (e.g. 4 lines: 2 for Drain, 2 for Source)
+        num_inner = 2 * N_dev
+        x_inner = 2*self.horizontal_distance + num_inner*self.connection_width + self.connections_distance * (num_inner-1)
+        y_inner = 2*self.vertical_distance + num_inner*self.connection_width + self.connections_distance * (num_inner-1)
+        
+        for i in range(len(cells[0])):
+            for j,r in enumerate(cells):
+                device_char = r[i]
+                position = {
+                    # X position: Outer gap + width of all previous devices + inner gaps of all previous devices
+                    "x": x_outer + i*width + i*x_inner, 
+                    # Y position: Outer gap + height of all previous devices + inner gaps of all previous devices
+                    "y": y_outer + j*height + j*y_inner
+                    }
+                device = self.genMos(main_device, position['x'] , position['y'])
+                if device_char not in contact_list:
+                    contact_list[device_char] = {
+                        'drain': [],
+                        'gate' : [],
+                        'source': []
+                    }
+                contact_list[device_char]['drain'].append(device.drain_box)
+                contact_list[device_char]['gate'].append(device.gate_box)
+                contact_list[device_char]['source'].append(device.source_box)
+                dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Device {device_char}", 'centerCenter', 'R0', Font.EURO_STYLE, self.l/10)
+                
+        # Total array dimensions
+        total_width = x_outer + len(cells[0])*width + (len(cells[0])-1)*x_inner + x_outer if len(cells[0]) > 0 else width
+        total_height = y_outer + len(cells)*height + (len(cells)-1)*y_inner + y_outer if len(cells) > 0 else height
+        total_height = total_height - 0.48 ## offset of the gat enc + via height
+        # -------------------------------------------------------------------------
+        # Draw vertical buses (Metal3) in the horizontal spaces (gaps between columns)
+        # -------------------------------------------------------------------------
+        for i in range(len(cells[0]) + 1):
+            if len(cells) == 1 and i in [0, len(cells[0])]:
+                continue
+            if i == 0:
+                # Gap 0 (Extreme Left): Only Source buses (N_dev lines)
+                gap_start_x = 0
+                for k, dev in enumerate(different_devices):
+                    # Source lines
+                    line_x = gap_start_x + self.horizontal_distance + k * (self.connection_width + self.connections_distance)
+                    box = Box(line_x, -0.48, line_x + self.connection_width, total_height)
+                    dbCreateRect(self, metal3_layer, box)
+                    dbCreateLabel(self, metal3_layer, box.getCenter(), f"source {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['source_v'].insert(box.box * (1/epsilon))
+                    
+            elif i == len(cells[0]):
+                # Gap N (Extreme Right): Only Drain buses (N_dev lines)
+                gap_start_x = x_outer + i*width + (i-1)*x_inner
+                for k, dev in enumerate(different_devices):
+                    # Drain lines
+                    line_x = gap_start_x + self.horizontal_distance + k * (self.connection_width + self.connections_distance)
+                    box = Box(line_x, -0.48, line_x + self.connection_width, total_height)
+                    dbCreateRect(self, metal3_layer, box)
+                    dbCreateLabel(self, metal3_layer, box.getCenter(), f"drain {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['drain_v'].insert(box.box * (1/epsilon))
+                    
+            else:
+                # Inner Gaps (Between devices): Drain buses for left device, THEN Source buses for right device (2 * N_dev lines)
+                gap_start_x = x_outer + i*width + (i-1)*x_inner
+                for k, dev in enumerate(different_devices):
+                    # Drain lines (First half of the gap)
+                    d_idx = k
+                    line_x_d = gap_start_x + self.horizontal_distance + d_idx * (self.connection_width + self.connections_distance)
+                    box_d = Box(line_x_d, -0.48, line_x_d + self.connection_width, total_height)
+                    dbCreateRect(self, metal3_layer, box_d)
+                    dbCreateLabel(self, metal3_layer, box_d.getCenter(), f"drain {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['drain_v'].insert(box_d.box * (1/epsilon))
+                    
+                    # Source lines (Second half of the gap)
+                    s_idx = k + N_dev
+                    line_x_s = gap_start_x + self.horizontal_distance + s_idx * (self.connection_width + self.connections_distance)
+                    box_s = Box(line_x_s, -0.48, line_x_s + self.connection_width, total_height)
+                    dbCreateRect(self, metal3_layer, box_s)
+                    dbCreateLabel(self, metal3_layer, box_s.getCenter(), f"source {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['source_v'].insert(box_s.box * (1/epsilon))
+
+        # -------------------------------------------------------------------------
+        # Draw horizontal buses (Metal2) in the vertical spaces (gaps between rows)
+        # -------------------------------------------------------------------------
+        for j in range(len(cells) + 1):
+            if j == 0:
+                # Gap 0 (Extreme Bottom): Only Source buses (N_dev lines)
+                gap_start_y = 0 - 0.48
+                for k, dev in enumerate(different_devices):
+                    # Source lines
+                    line_y = gap_start_y + self.vertical_distance + k * (self.connection_width + self.connections_distance)
+                    box = Box(0, line_y, total_width, line_y + self.connection_width)
+                    dbCreateRect(self, metal2_layer, box)
+                    dbCreateLabel(self, metal2_layer, box.getCenter(), f"source {dev}", 'centerCenter', 'R0', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['source_h'].insert(box.box * (1/epsilon))
+                    
+            elif j == len(cells):
+                # Gap M (Extreme Top): Only Drain buses (N_dev lines)
+                gap_start_y = y_outer + j*height + (j-1)*y_inner - 0.48
+                for k, dev in enumerate(different_devices):
+                    # Drain lines
+                    line_y = gap_start_y + self.vertical_distance + k * (self.connection_width + self.connections_distance)
+                    box = Box(0, line_y, total_width, line_y + self.connection_width)
+                    dbCreateRect(self, metal2_layer, box)
+                    dbCreateLabel(self, metal2_layer, box.getCenter(), f"drain {dev}", 'centerCenter', 'R0', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['drain_h'].insert(box.box * (1/epsilon))
+                    
+            else:
+                # Inner Gaps (Between devices): Drain buses for bottom device, THEN Source buses for top device (2 * N_dev lines)
+                gap_start_y = y_outer + j*height + (j-1)*y_inner - 0.48
+                for k, dev in enumerate(different_devices):
+                    # Drain lines (First half of the gap)
+                    d_idx = k
+                    line_y_d = gap_start_y + self.vertical_distance + d_idx * (self.connection_width + self.connections_distance)
+                    box_d = Box(0, line_y_d, total_width, line_y_d + self.connection_width)
+                    dbCreateRect(self, metal2_layer, box_d)
+                    dbCreateLabel(self, metal2_layer, box_d.getCenter(), f"drain {dev}", 'centerCenter', 'R0', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['drain_h'].insert(box_d.box * (1/epsilon))
+                    
+                    # Source lines (Second half of the gap)
+                    s_idx = k + N_dev
+                    line_y_s = gap_start_y + self.vertical_distance + s_idx * (self.connection_width + self.connections_distance)
+                    box_s = Box(0, line_y_s, total_width, line_y_s + self.connection_width)
+                    dbCreateRect(self, metal2_layer, box_s)
+                    dbCreateLabel(self, metal2_layer, box_s.getCenter(), f"source {dev}", 'centerCenter', 'R0', Font.EURO_STYLE, self.connection_width/2)
+                    connections_list[dev]['source_h'].insert(box_s.box * (1/epsilon))
+        
+        def link_regions(vertical, horizontal):
+            drain_intersections = vertical & horizontal
+            shapes = drain_intersections.decompose_trapezoids()
+            print(shapes.size())
+            for shape in shapes:
+                box = shape.bbox()
+                mbox = Box()
+                mbox.box = box
+                #dbCreateRect(self, metal4_layer, mbox)
+                self.genVia(mbox.getWidth()*epsilon, mbox.getHeight()*epsilon, mbox.getCenter().x*epsilon, mbox.getCenter().y*epsilon, 'Metal2', 'Metal3', True)
+        
+        def get_nearest_connection(contact, connections):
+            return min(connections, key=lambda r: math.hypot(abs(r.bbox().center().x*epsilon - contact.getCenter().x)))
+        
+        for dev in connections_list:
+            current_connection = connections_list[dev];
+            drain_v = current_connection['drain_v']
+            drain_h = current_connection['drain_h']
+            source_v = current_connection['source_v']
+            source_h = current_connection['source_h']  
+            
+            dev_drains = contact_list[dev]['drain']
+            dev_sources = contact_list[dev]['source']
+            
+            link_regions(drain_v, drain_h)
+            link_regions(source_v, source_h)
+            ## connect drains together
+            for dr_contact in dev_drains:
+                nearest = get_nearest_connection(dr_contact, drain_v)
+                nearest_box = Box(nearest.bbox().left * epsilon, dr_contact.bottom, nearest.bbox().right * epsilon ,dr_contact.top)
+                self.genVia(nearest_box.getWidth(), nearest_box.getHeight(), nearest_box.getCenter().x, nearest_box.getCenter().y, 'Metal2', 'Metal3', True)
+                connect_box = Box(dr_contact.left, dr_contact.bottom, nearest.bbox().right * epsilon, dr_contact.top)
+                dbCreateRect(self, metal2_layer, connect_box)
+            
+            ## connect sources together
+            for sc_contact in dev_sources:
+                nearest = get_nearest_connection(sc_contact, source_v)
+                nearest_box = Box(nearest.bbox().left * epsilon, sc_contact.bottom, nearest.bbox().right * epsilon ,sc_contact.top)
+                self.genVia(nearest_box.getWidth(), nearest_box.getHeight(), nearest_box.getCenter().x, nearest_box.getCenter().y, 'Metal2', 'Metal3', True)
+                connect_box = Box(nearest.bbox().left * epsilon, sc_contact.bottom, sc_contact.right, sc_contact.top)
+                dbCreateRect(self, metal2_layer, connect_box)
+            
+                
             
 
-        met_box = Box(max_width_dummies, max_top , max_right + guard_ring_offset, min_bottom )
-        dbCreateRect(self, metall_layer,met_box)   
-
-        #dbCreateRect(self, poly_layer, Box(device_width/2 - l/2, min_bottom_step, max_right - device_width/2 + l/2, -y_offset))
-        ### Create vias between gate and poly layer
-
-
-        ###########################################
-
-            
-        print("Device layout generated")
-        self.guardRingType = GuardRingType.NWELL if self.model_type.__contains__('pmos') else GuardRingType.PSUB ;
-        self.guardRingDistance = 0
-        #print(device.shapes[0].bbox.getLeft())
-
-        
+        self.guardRingType = 'psub' if 'n' in self.model_type else 'nwell'

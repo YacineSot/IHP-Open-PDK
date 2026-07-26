@@ -91,7 +91,7 @@ class DeviceBase(DloGen):
         """
         return GuardRingType.cases()
 
-    def genVia(self, vn_columns, vn_rows, offset_x=0, offset_y=0, b_layer = 'GatPoly', t_layer = 'Metal1', use_width = False):
+    def genVia(self, vn_columns, vn_rows, offset_x=0, offset_y=0, b_layer = 'GatPoly', t_layer = 'Metal1', use_width = False, origin='centerCenter'):
         back_sx = self.sx if hasattr(self, 'sx') else 0
         back_sy = self.sy if hasattr(self, 'sy') else 0
         self.sx = offset_x
@@ -110,13 +110,14 @@ class DeviceBase(DloGen):
         self.vt1_rows = 0
         self.vt2_columns = 0
         self.vt2_rows = 0
+        self.origin = origin
         vias = via_stack.genLayout(self)
         self.sx = back_sx
         self.sy = back_sy
         return vias
     
     def run_gen_guard_ring(self):
-        if self.guardRingType != GuardRingType.NONE:
+        if self.guardRingType != GuardRingType.NONE and self.guardRingShape:
             min_left = INT_MAX
             min_bottom = INT_MAX
             max_right = INT_MIN
@@ -157,7 +158,6 @@ class DeviceBase(DloGen):
                                 h=h,
                                 x_center=x_center,
                                 y_center=y_center)
-
     def genLayout(self):
         self.genDeviceLayout()
         self.run_gen_guard_ring()
