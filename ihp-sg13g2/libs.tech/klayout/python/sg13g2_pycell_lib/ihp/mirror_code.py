@@ -71,8 +71,8 @@ class mirror(DeviceBase):
 
     def setupParams(self, params):
         # process parameter values entered by user
-        self.w  = Numeric(params['w'])*1e6
-        self.l  = Numeric(params['l'])*1e6
+        self.w  = Numeric(params['w'])
+        self.l  = Numeric(params['l'])
         self.s_d_mlayer = params['s_d_mlayer']
         self.ng = 1
         self.model_type = params['model_type']
