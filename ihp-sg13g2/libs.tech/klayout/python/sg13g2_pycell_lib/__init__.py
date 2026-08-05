@@ -77,6 +77,7 @@ moduleNames = [
         'schottky_code',
         'guard_ring_code',
         'mirror_code',
+        'mirror_ihp_code',
         'diff_pairs_code',
 ]
 

@@ -20,7 +20,7 @@ __version__ = '$Revision: #0 $'
 
 from cni.dlo import *
 import cni.text
-from .guard_ring_code import GuardRingType
+from .guard_ring_code import GuardRingType, generate_guard_ring
 from .geometry import *
 from .nmos_code import nmos
 from .pmos_code import pmos
@@ -66,12 +66,15 @@ class mirror(DeviceBase):
         specs('vertical_distance', '0.3u', 'Vertical distance')
         specs('connection_metal_width', '0.5u', 'Connection metal width')
         specs('connection_metal_distance', '0.5u', 'Connection metal distance')
-        specs('layout_pattern', 'AB|BA', 'Layout Pattern')
-        specs('gate_linked_devs', '', 'Devices which gate linked to source')
+        specs('layout_pattern', 'AB BA', 'Layout Pattern')
+        specs('gate_linked_to_source_devs', '', 'Devices which gate linked to source/drain')
+        specs('connect_gate_to', 'drain', 'Connect gate to: ', ChoiceConstraint(['source', 'drain']))
         specs('connected_gate_devs', '', 'Devices which gates connected together')
+        specs('connected_source_devs', '', 'Devices which sources connected together')
         specs('dummies_count', 2, 'Number of dummies')
         specs('dummies_offset', '0.2u', 'Distance between core and dummy')
         specs('dummies_distance', '0.2u', 'Distance between dummies')
+        specs('place_taps', False, 'Place taps between devices', BooleanConstraint())
         super().defineParamSpecs(specs)
         specs('guard_ring_ref', 'active', 'Guard ring distance referance', ChoiceConstraint(['active', 'full']))
 
@@ -88,10 +91,13 @@ class mirror(DeviceBase):
         # self.grid_link = params['grid_link']
         self.grid_link = 'T-B'
         self.guard_ring_ref = params['guard_ring_ref']
+        self.separation = ' '
         # self.gate_metal = params['gate_mlayer']
-        self.layout_pattern = self.fix_string(params['layout_pattern'])
-        self.gate_linked_devs = params['gate_linked_devs']
+        self.layout_pattern = self.fix_string(params['layout_pattern'], self.separation)
+        self.gate_linked_to_source_devs = params['gate_linked_to_source_devs']
+        self.connect_gate_to = params['connect_gate_to']
         self.connected_gate_devs = set(self.fix_string(params['connected_gate_devs']))
+        self.connected_source_devs = set(self.fix_string(params['connected_source_devs']))
         self.horizontal_distance = Numeric(params['horizontal_distance'])*1e6
         self.vertical_distance = Numeric(params['vertical_distance'])*1e6
         self.bottom_top_distance = 0.2
@@ -100,12 +106,13 @@ class mirror(DeviceBase):
         self.dummies_count = int(params['dummies_count'])
         self.dummies_offset = Numeric(params['dummies_offset'])*1e6
         self.dummies_distance = Numeric(params['dummies_distance'])*1e6
+        self.place_taps = params['place_taps']
 
         super().setupParams(params)
 
     @staticmethod
-    def fix_string(str):
-        return ''.join([char for char in str if char.isalpha() or char == '|'])
+    def fix_string(str, separation = ""):
+        return ''.join([char for char in str if char.isalpha() or char == separation])
     
     @classmethod
     def validGuardRingTypes(cls) -> List[GuardRingType]:
@@ -219,6 +226,7 @@ class mirror(DeviceBase):
         #*
         #************************************************************************
         epsilon = techparams['epsilon1']
+        min_metal1_distance = techparams['M1_a']
         min_metal_width = techparams['Mn_a']
         min_metal_distance = techparams['Mn_b']
         endcap = techparams['M1_c1']
@@ -261,9 +269,10 @@ class mirror(DeviceBase):
         #     self.w = self.w * 1e-6
         #     self.l = self.l * 1e-6
         (width, height) = main_device.get_dimensions(self.w, self.l, self.ng, self.techparams)
-        cells = self.layout_pattern.upper().split("|")
+        cells = self.layout_pattern.upper().split(self.separation)
         cells = cells[::-1] ## because we start drowing from the bottom to the top
-        different_devices = set(self.layout_pattern.replace('|', ''))
+        cells = [self.fix_string(cell) for cell in cells]
+        different_devices = set(self.layout_pattern.replace(self.separation, ''))
         print(f"devices are: {different_devices}")
         different_devices_count = len(different_devices)
         contact_list = {}
@@ -281,19 +290,24 @@ class mirror(DeviceBase):
         
         # Calculate widths for the gaps
         # Outer gaps (leftmost and rightmost, bottommost and topmost) only contain 'different_devices_count' lines (e.g. 2 lines)
+        self.vertical_distance = max(self.vertical_distance, min_metal1_distance)
+        self.horizontal_distance = max(self.horizontal_distance, min_metal1_distance)
         N_dev = different_devices_count
         outer_devs_l = set(cell[0] for cell in cells)
         outer_devs_r = set(cell[-1] for cell in cells)
-        linked_gate_devs = different_devices & set(self.gate_linked_devs)
+        linked_gate_to_source_devs = different_devices & set(self.gate_linked_to_source_devs)
+        common_source_devs = different_devices & self.connected_source_devs
         common_gate_devs = self.connected_gate_devs
         N_unique_gate_connection = N_dev if len(common_gate_devs) < 2 else N_dev - len(common_gate_devs) + 1
-        N_linked_gate_devs = len(linked_gate_devs)
+        N_unique_source_connection = N_dev if len(common_source_devs) < 2 else N_dev - len(common_source_devs) + 1
+        N_linked_gate_to_source_devs = len(linked_gate_to_source_devs)
+        N_unique_gate_connection -= N_linked_gate_to_source_devs
         N_outer_dev_l = len(outer_devs_l)
         N_outer_dev_r = len(outer_devs_r)
         x_outer_l = 2*self.horizontal_distance + N_outer_dev_l*self.connection_width + self.connections_distance * (N_outer_dev_l-1)
         x_outer_r = 2*self.horizontal_distance + N_outer_dev_r*self.connection_width + self.connections_distance * (N_outer_dev_r-1)
         #x_outer = x_outer if len(cells) > 1 else 0
-        y_outer_b = 2*self.bottom_top_distance + (N_dev + N_unique_gate_connection)*self.connection_width + self.connections_distance * (N_dev + N_unique_gate_connection -1)
+        y_outer_b = 2*self.bottom_top_distance + (N_unique_source_connection + N_unique_gate_connection)*self.connection_width + self.connections_distance * (N_unique_source_connection + N_unique_gate_connection -1)
         y_outer_t = 2*self.bottom_top_distance + N_dev*self.connection_width + self.connections_distance * (N_dev-1)
         
         # Inner gaps (between devices) contain 2 * 'different_devices_count' lines (e.g. 4 lines: 2 for Drain, 2 for Source)
@@ -323,7 +337,7 @@ class mirror(DeviceBase):
                 contact_list[device_char]['gate_t'].append(device.gate_box_t)
                 contact_list[device_char]['gate_b'].append(device.gate_box_b)
                 contact_list[device_char]['source'].append(device.source_box)
-                dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Device {device_char}", 'centerCenter', 'R0', Font.EURO_STYLE, self.l/10)
+                dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Device {device_char}", 'centerCenter', 'R0', Font.EURO_STYLE, self.l*1e5)
                 
         #############################################
         #             Generate DUMMIES              #
@@ -346,10 +360,10 @@ class mirror(DeviceBase):
                    dummy_connection1['left'] = device.drain_box.right 
                if i == (self.dummies_count - 1) and (len(cells)-1):
                    dummy_connection1['right'] = device.source_box.left - self.guardRingDistance
-               dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Dummy", 'centerCenter', 'R0', Font.EURO_STYLE, self.l/10)
+               dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Dummy", 'centerCenter', 'R0', Font.EURO_STYLE, self.l*1e5)
                position['x'] = x_outer_l + self.dummies_offset + (i+1)*(width + self.dummies_distance ) + (width + x_inner)*(len(cells[0])-1)
                device = self.genMos(main_device, position['x'] , position['y'], 'M1')
-               dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Dummy", 'centerCenter', 'R0', Font.EURO_STYLE, self.l/10)
+               dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Dummy", 'centerCenter', 'R0', Font.EURO_STYLE, self.l*1e5)
                if j == 0:
                    dummy_connection2['bottom'] = device.gate_box_b.bottom
                if j == (len(cells)-1):
@@ -358,17 +372,12 @@ class mirror(DeviceBase):
                    dummy_connection2['right'] = device.source_box.left
                if i == (self.dummies_count - 1):
                    dummy_connection2['left'] = device.drain_box.right + self.guardRingDistance   
-        if self.dummies_count > 0:  
-            dummy_con_box = Box(dummy_connection1['left'], dummy_connection1['bottom'], dummy_connection1['right'], dummy_connection1['top'])
-            dbCreateRect(self, metal1_layer, dummy_con_box)
-            dummy_con_box = Box(dummy_connection2['left'], dummy_connection2['bottom'], dummy_connection2['right'], dummy_connection2['top'])
-            dbCreateRect(self, metal1_layer, dummy_con_box)
                  
         
         #############################################
         #           Generate Guard Ring             #
         #############################################
-        self.guardRingDistance = 0.3
+        #self.guardRingDistance = 0.3
         self.guardRingType = 'psub' if 'n' in self.model_type else 'nwell'
         if self.guard_ring_ref == 'active':
             self.run_gen_guard_ring()
@@ -380,6 +389,19 @@ class mirror(DeviceBase):
         total_width = x_outer_l + len(cells[0])*width + (len(cells[0])-1)*x_inner + x_outer_r - self.horizontal_distance if len(cells[0]) > 0 else width
         total_height = y_outer_b + len(cells)*height + (len(cells)-2)*y_inner +  y_outer_t if len(cells) > 0 else height
         total_height = total_height + height_offset -0.48 ## offset of the gat enc + via height
+        
+        self.gate_connection_horizontal_shift = 0
+        
+        if self.place_taps:
+            self.gate_connection_horizontal_shift = 0.3
+            if abs(self.horizontal_distance - self.gate_connection_horizontal_shift) < min_metal1_distance:
+                self.gate_connection_horizontal_shift = 0
+        ### Place Taps between devices
+        for j in range(len(cells)):
+            if not self.place_taps or self.gate_connection_horizontal_shift == 0: break;
+            x_center = x_outer_l + width + x_inner/2 + 0.15 + ( (width + x_inner)*j + (width + x_inner)*(j-1) ) /2
+            generate_guard_ring(self, self.guardRingType, 'e', width + x_inner, total_height, x_center , total_height/2)
+        ###############################
         # -------------------------------------------------------------------------
         # Draw vertical buses (Metal3) in the horizontal spaces (gaps between columns)
         # -------------------------------------------------------------------------
@@ -424,9 +446,10 @@ class mirror(DeviceBase):
                     box_d = Box(line_x_d, y_inner - 0.48 - height_offset, line_x_d + self.connection_width, total_height)
                     dbCreateRect(self, metal3_layer, box_d)
                     dbCreateLabel(self, metal3_layer, box_d.getCenter(), f"drain {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
-                    dbCreateRect(self, metal1_layer, box_d)
-                    dbCreateLabel(self, metal1_layer, box_d.getCenter(), f"gate {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
                     connections_list[dev]['drain_v'].insert(box_d.box * (1/epsilon))
+                    dbCreateRect(self, metal1_layer, box_d)
+                    box_d.moveBy(-self.gate_connection_horizontal_shift,0)
+                    dbCreateLabel(self, metal1_layer, box_d.getCenter(), f"gate {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
                     connections_list[dev]['gate_v'].insert(box_d.box * (1/epsilon))
                     
                     # Source lines (Second half of the gap)
@@ -434,10 +457,11 @@ class mirror(DeviceBase):
                     line_x_s = gap_start_x + self.horizontal_distance + s_idx * (self.connection_width + self.connections_distance)
                     box_s = Box(line_x_s, y_inner - 0.48 - height_offset, line_x_s + self.connection_width, total_height)
                     dbCreateRect(self, metal3_layer, box_s)
-                    dbCreateRect(self, metal1_layer, box_s)
                     dbCreateLabel(self, metal3_layer, box_s.getCenter(), f"source {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
-                    dbCreateLabel(self, metal1_layer, box_s.getCenter(), f"gate {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
                     connections_list[dev]['source_v'].insert(box_s.box * (1/epsilon))
+                    dbCreateRect(self, metal1_layer, box_s)
+                    box_s.moveBy(self.gate_connection_horizontal_shift,0)
+                    dbCreateLabel(self, metal1_layer, box_s.getCenter(), f"gate {dev}", 'centerCenter', 'R90', Font.EURO_STYLE, self.connection_width/2)
                     connections_list[dev]['gate_v'].insert(box_s.box * (1/epsilon))
 
         # -------------------------------------------------------------------------
@@ -447,14 +471,25 @@ class mirror(DeviceBase):
             if j == 0 and 'B' in self.grid_link:
                 # Gap 0 (Extreme Bottom): Only Source buses (N_dev lines)
                 gap_start_y = 0 - 0.48
-                for k, dev in enumerate(different_devices):
+                k = 0
+                for dev in different_devices:
+                    dev_name = dev
+                    if dev in self.connected_source_devs:
+                        dev_name = self.connected_source_devs
+                        for tdev in self.connected_source_devs:
+                            if tdev == dev: continue
+                            if connections_list[tdev]['source_h'].count() > 0:
+                                connections_list[dev]['source_h'] = connections_list[tdev]['source_h']
+                                break;
+                        if connections_list[dev]['source_h'].count() > 0: continue;
                     # Source lines
                     current_source = (N_unique_gate_connection) + k
                     line_y = gap_start_y + self.bottom_top_distance + current_source * (self.connection_width + self.connections_distance)
                     box = Box(self.horizontal_distance, line_y, total_width, line_y + self.connection_width)
                     dbCreateRect(self, metal2_layer, box)
-                    dbCreateLabel(self, metal2_layer, box.getCenter(), f"source {dev}", 'centerCenter', 'R0', Font.EURO_STYLE, self.connection_width/2)
+                    dbCreateLabel(self, metal2_layer, box.getCenter(), f"source {dev_name}", 'centerCenter', 'R0', Font.EURO_STYLE, self.connection_width/2)
                     connections_list[dev]['source_h'].insert(box.box * (1/epsilon))
+                    k += 1
                 k = 0
                 for dev in different_devices:
                     dev_name = dev
@@ -466,7 +501,7 @@ class mirror(DeviceBase):
                                 connections_list[dev]['gate_h'] = connections_list[tdev]['gate_h']
                                 break;
                         if connections_list[dev]['gate_h'].count() > 0: continue;
-                    if dev in linked_gate_devs:
+                    if dev in linked_gate_to_source_devs:
                         continue
                     # Gate lines
                     line_y = gap_start_y + self.bottom_top_distance + k * (self.connection_width + self.connections_distance)
@@ -560,9 +595,15 @@ class mirror(DeviceBase):
             for gt_contact in dev_gates:
                 connect_terminal(gt_contact, gate_v, 'Metal1', 'Metal2')
             
-            if dev in self.gate_linked_devs:
+            if dev in self.gate_linked_to_source_devs:
                 for gt_contact in dev_gates:
-                    connect_terminal(gt_contact, source_v)
+                    vertical_connection = source_v if self.connect_gate_to == 'source' else drain_v
+                    connect_terminal(gt_contact, vertical_connection)
         
         if self.guard_ring_ref == 'full':
             self.run_gen_guard_ring()
+        if self.dummies_count > 0:  
+            dummy_con_box = Box(dummy_connection1['left'], dummy_connection1['bottom'], dummy_connection1['right'], dummy_connection1['top'])
+            dbCreateRect(self, metal1_layer, dummy_con_box)
+            dummy_con_box = Box(dummy_connection2['left'], dummy_connection2['bottom'], dummy_connection2['right'], dummy_connection2['top'])
+            dbCreateRect(self, metal1_layer, dummy_con_box)
