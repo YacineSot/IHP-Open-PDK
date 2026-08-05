@@ -397,7 +397,7 @@ class mirror(DeviceBase):
             if abs(self.horizontal_distance - self.gate_connection_horizontal_shift) < min_metal1_distance:
                 self.gate_connection_horizontal_shift = 0
         ### Place Taps between devices
-        for j in range(len(cells)):
+        for j in range(len(cells) -1):
             if not self.place_taps or self.gate_connection_horizontal_shift == 0: break;
             x_center = x_outer_l + width + x_inner/2 + 0.15 + ( (width + x_inner)*j + (width + x_inner)*(j-1) ) /2
             generate_guard_ring(self, self.guardRingType, 'e', width + x_inner, total_height, x_center , total_height/2)
