@@ -51,15 +51,18 @@ from .via_stack_code import *
 class DeviceBase(DloGen):
     @classmethod
     def defineParamSpecs(cls, specs):
+        def_tap = {'north': True, 'south': True, 'west': True, 'east': True} if not hasattr(cls, 'default_tap') else cls.default_tap
         choices = [c.value for c in cls.validGuardRingTypes()]
+        
         cls.default_ring = cls.default_ring if hasattr(cls, 'default_ring') else 'none'
         cls.default_distance = cls.default_distance if hasattr(cls, 'default_distance') else '0.8u'
+        
         specs('guardRingType', cls.default_ring, 'Guard Ring Type', ChoiceConstraint(choices))
         specs('guardRingDistance', cls.default_distance, 'Guard Ring Distance')
-        specs('north', True, 'Include North Side', BooleanConstraint())
-        specs('south', True, 'Include South Side', BooleanConstraint())
-        specs('west', True, 'Include West Side', BooleanConstraint())
-        specs('east', True, 'Include East Side', BooleanConstraint())
+        specs('north', def_tap['north'], 'Include North Side', BooleanConstraint())
+        specs('south', def_tap['south'], 'Include South Side', BooleanConstraint())
+        specs('west', def_tap['west'], 'Include West Side', BooleanConstraint())
+        specs('east', def_tap['east'], 'Include East Side', BooleanConstraint())
         #specs('guardRingArray', False, 'Array Ring',ChoiceConstraint([True, False]))
         # specs('rows', 1, 'Number of rows')
         # specs('row_distance', '0u', 'Distance between rows')

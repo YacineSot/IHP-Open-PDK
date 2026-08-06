@@ -124,8 +124,8 @@ class via_stack(DloGen):
         vn_rows = self.vn_rows 
         vn_total_width = self.vn_total_width if hasattr(self, 'vn_total_width') else 0
         vn_total_height = self.vn_total_height if hasattr(self, 'vn_total_height') else 0
-        vn_total_height = vn_total_height * 1e-6 if vn_total_height > 1e8 else vn_total_height
-        vn_total_width = vn_total_width * 1e-6 if vn_total_width > 1e8 else vn_total_width
+        vn_total_height = vn_total_height * 1e-6 if vn_total_height > 20 else vn_total_height
+        vn_total_width = vn_total_width * 1e-6 if vn_total_width > 20 else vn_total_width
         
 
         # SG13CMOS5L: M1-M4-TM1 metal stack (TopVia1 connects M4 to TopMetal1)

@@ -148,6 +148,7 @@ proc to_eng_safe {v} {
 
 # displays mos parameters simulation data , used in symbol annotate_fet_params.sym
 proc display_fet_params {instname} {
+  puts "trying to display instance name: $instname"
   set txt {}
   set schpath     [xschem get sim_sch_path]
   set symbol      [xschem getprop instance $instname cell::name]

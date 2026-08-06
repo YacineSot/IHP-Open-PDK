@@ -266,10 +266,10 @@ class guard_ring(DloGen):
         specs('type', 'ntap', 'Guard Ring Type', ChoiceConstraint(['nwell', 'psub', 'nwell_cmos']))  # 'dnwell'
         specs('w', '3.05u', 'Width')
         specs('h', '3.05u', 'Height')
-        specs('north', 'yes', 'Include North Side', ChoiceConstraint(['yes', 'no']))
-        specs('south', 'yes', 'Include South Side', ChoiceConstraint(['yes', 'no']))
-        specs('west', 'yes', 'Include West Side', ChoiceConstraint(['yes', 'no']))
-        specs('east', 'yes', 'Include East Side', ChoiceConstraint(['yes', 'no']))
+        specs('north', True, 'Include North Side',BooleanConstraint())
+        specs('south', True, 'Include South Side',BooleanConstraint())
+        specs('west', True, 'Include West Side',BooleanConstraint())
+        specs('east', True, 'Include East Side',BooleanConstraint())
 
     def setupParams(self, params):
         # process parameter values entered by user
@@ -277,7 +277,7 @@ class guard_ring(DloGen):
         self.type = params['type']
         self.w = Numeric(params['w'])*1e6
         self.h = Numeric(params['h'])*1e6
-        self.shape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side) == 'yes')
+        self.shape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
 
     def genLayout(self):
         generate_guard_ring(dlo_gen=self,
