@@ -78,7 +78,7 @@ moduleNames = [
         'guard_ring_code',
         'mirror_code',
         #'mirror_ihp_code',
-        'diff_pairs_code',
+        #'diff_pairs_code',
         't_gate_code'
 ]
 
