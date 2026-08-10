@@ -52,7 +52,9 @@ class t_gate(DloGen, t_gate_base):
         specs('vertical_spacing', '1u', 'Vertical spacing')
         specs('horizontal_spacing', '0.5u', 'Horizontal spacing')
         specs('tap_spacing', '0.5u', 'Tap spacing')
+        specs('tap_width', '0.3u', 'Tap Width')
         specs('connection_metal_width', '0.5u', 'Connection metal width')
+        specs('self.inner_connection_width', '0.2u', 'Inner Connections M1 width')
         specs('connection_metal_spacing', '0.5u', 'Connection metal spacing')
         
         
@@ -71,8 +73,10 @@ class t_gate(DloGen, t_gate_base):
         self.horizontal_spacing = Numeric(params['horizontal_spacing'])*1e6
         self.connection_metal_width = Numeric(params['connection_metal_width'])*1e6
         self.connection_metal_spacing = Numeric(params['connection_metal_spacing'])*1e6
+        self.inner_connection_width = Numeric(params['self.inner_connection_width'])*1e6
         self.tap_spacing = Numeric(params['tap_spacing'])*1e6
-        self.tap_width = 0.3
+        self.tap_width = Numeric(params['tap_width'])*1e6
+        self.Mn_min_distance = self.techparams['Mn_b']
 
     def set_devices(self, model_type):
         """
@@ -114,8 +118,8 @@ class t_gate(DloGen, t_gate_base):
                     's_d_mlayer': "M1", 
                     'gate_connection': gate_connection,
                     'gate_metal': "M2", 
-                    'cnt_w_ratio': 100,
-                    'gate_cnt_ratio': 80,
+                    'cnt_w_ratio': 80,
+                    'gate_cnt_ratio': 100,
                     'guardRingType': 'none',
                     'guardRingDistance': 0.5,
                 }
@@ -149,7 +153,7 @@ class t_gate(DloGen, t_gate_base):
         return (sx, sy) : size of the device (active | gate)
         
         """
-        dimensions = device_model.get_dimensions(w, l, ng, self.techparams, gate_connection)
+        dimensions = device_model.get_dimensions(w*1e6, l*1e6, ng, self.techparams, gate_connection)
         return {'Width': dimensions[0], 'Height': dimensions[1]}
     
     def gen_tap(self, w, l, x, y, tap_type, tap_name=""):
@@ -223,7 +227,7 @@ class t_gate(DloGen, t_gate_base):
             'b_layer': b_layer,
             't_layer': t_layer,
             'origin': origin,
-            'extra_vias': 'no',
+            'extra_vias': False,
             'sx': box.center().x,
             'sy': box.center().y
         }
@@ -257,7 +261,7 @@ class t_gate(DloGen, t_gate_base):
         
         return self.gen_via(intersection_box, b_layer, t_layer)
         
-    def gen_tap(self, box, tap_type, tap_shape, tap_name=""):
+    def gen_tap(self, box, tap_type, tap_shape,tap_width,  tap_name=""):
         """
         Template method for subclasses to overwrite
         
@@ -267,7 +271,7 @@ class t_gate(DloGen, t_gate_base):
         tap_name: name of the tap (to display over the gate)
         """
         ring_type = 'nwell' if tap_type == 'well' else 'psub'
-        generate_guard_ring(self, ring_type, tap_shape, box.width(), box.height(), box.center().x, box.center().y)
+        generate_guard_ring(self, ring_type, tap_shape, box.width(), box.height(), box.center().x, box.center().y, tap_width)
     
     
     def genLayout(self):

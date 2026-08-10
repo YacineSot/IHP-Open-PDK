@@ -24,6 +24,7 @@ from .geometry import *
 from .guard_ring_code import GuardRingType
 from .thermal import *
 from .utility_functions import *
+import pya
 
 import math
 
@@ -69,6 +70,14 @@ class mos_base(DeviceBase):
         specs('s_d_mlayer', 'M2', 'S/D Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
         specs('gate_connection', 'T-B', 'Gate contact position', ChoiceConstraint(['T-B', 'T', 'B', 'none']))
         specs('gate_metal', 'M2', 'Gate contact metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
+        specs('use_poly_pin', False, 'Create poly pin', BooleanConstraint())
+        
+        specs('dummies_count', '0', 'Dummies Count')
+        specs('dummies_l', '0.13u', 'Dummies Lenght')
+        specs('dummy_core_spacing', '0.3u', 'Dummy-Core Spacing')
+        specs('dummies_inner_spacing', '-0.3u', 'Dummies Inner Spacing')
+        specs('dummies_left', True, 'Place Dummies on the left', BooleanConstraint())
+        specs('dummies_right', True, 'Place Dummies on the right', BooleanConstraint())
         
         super().defineParamSpecs(specs)
         
@@ -76,19 +85,40 @@ class mos_base(DeviceBase):
         specs('minL', minL, 'Minimum Length', ReadOnlyConstraint())
 
     def setupParams(self, params):
+        # params = self.fix_params_micro_unit(
+        #     params=params,
+        #     keys=[
+        #         'w',
+        #         'l',
+        #         'dummies_l',
+        #         'dummy_core_spacing',
+        #         'dummies_inner_spacing'
+        #     ]
+        # )
         self.params = params
         self.s_d_mlayer = params['s_d_mlayer']
         self.gate_connection = params['gate_connection']
         self.gate_metal = params['gate_metal']
         
-        self.w = Numeric(params['w'])
-        self.l = Numeric(params['l'])
-        self.ng = Numeric(params['ng'])
+        self.w = Numeric(params['w'])*1e6
+        self.l = Numeric(params['l'])*1e6
+        self.ng = int(params['ng'])
         
-        self.cnt_w_ratio = Numeric(params['cnt_w_ratio'])
-        self.gate_cnt_ratio = Numeric(params['gate_cnt_ratio'])
+        self.cnt_w_ratio = int(params['cnt_w_ratio'])
+        self.gate_cnt_ratio = int(params['gate_cnt_ratio'])
         self.cnt_w_ratio = max(1, min(100, self.cnt_w_ratio))/100
         self.gate_cnt_ratio = max(1, min(100, self.gate_cnt_ratio))/100
+        self.use_poly_pin = params['use_poly_pin'] if hasattr(params, 'use_poly_pin') else False
+        
+        if 'dummies_count' in params:
+            self.dummies_count = int(params['dummies_count'])
+            self.dummies_l = Numeric(params['dummies_l'])
+            self.dummy_core_spacing = Numeric(params['dummy_core_spacing'])*1e6
+            self.dummies_inner_spacing = Numeric(params['dummies_inner_spacing'])*1e6
+            self.dummies_left = params['dummies_left']
+            self.dummies_right = params['dummies_right']
+        else:
+            self.dummies_count = 0
 
         super().setupParams(params)
 
@@ -100,7 +130,7 @@ class mos_base(DeviceBase):
         return cls.allowed_guard_ring_types
 
     @staticmethod
-    def get_dimensions(w, l, ng, techparams, gate_connection='T-B'):
+    def get_dimensions(w, l, ng, techparams, gate_connection='T-B', dummies_params={'count': 0}):
         """
         Returns the (width, height) of the device.
         width: from the beginning to the end of the Activ (diffusion) horizontally.
@@ -108,10 +138,6 @@ class mos_base(DeviceBase):
         """
         w_val = Numeric(w)
         l_val = Numeric(l)
-        if w_val < 1:
-            w_val = w_val * 1e6
-        if l_val < 1:
-            l_val = l_val * 1e6
             
         epsilon = techparams['epsilon1']
         ng_int = math.floor(Numeric(ng) + epsilon)
@@ -132,22 +158,46 @@ class mos_base(DeviceBase):
         width = (ng_int * l_fixed) + ((ng_int + 1) * cont_size) + (2 * ng_int * gatpoly_cont_dist) + (2 * cont_Activ_overRec)
         
         # Vertical height
-        gatpoly_Activ_over = techparams['Gat_c']
-        gatpoly_Min_Width = techparams['Gat_a']
+        gatpoly_cont_enc = techparams['Cnt_d']
         
         gate_offset = 0
         if gate_connection != 'none':
             additional_offset = 0.065 if l_fixed < 0.5 else 0
             gate_offset = additional_offset - 0.035 if additional_offset > 0 else 0
+        poly_height = cont_size + 2*gatpoly_cont_enc
         via_height = 0
         if 'T' in gate_connection:
-            via_height += gatpoly_Min_Width + 2*gatpoly_Activ_over
+            via_height += poly_height
         if 'B' in gate_connection:
-            via_height += gatpoly_Min_Width + 2*gatpoly_Activ_over
+            via_height += poly_height
             
         height = w_finger + (2 * gate_offset) + via_height
         
+        dummies_count = dummies_params['count']
+        if dummies_count > 0:
+            (dummy_width, _ ) = mos_base.get_dimensions(
+                w,
+                dummies_params['l']*1e6,
+                1,
+                techparams,
+                'T-B'
+            )
+            additional_width = dummy_width*dummies_count + dummies_params['core_spacing']*1e6 + dummies_params['inner_spacing']*1e6*(dummies_count - 1)
+            if dummies_params['left']:
+                width += additional_width
+            if dummies_params['right']:
+                width += additional_width
+        print(f'device dimensions: (width, height): ({width}, {height})')
         return width, height
+
+    def get_self_dimensions(self):
+        return self.get_dimensions(
+            w=self.w,
+            l=self.l,
+            ng=self.ng,
+            techparams=self.tech.getTechParams(),
+            gate_connection=self.gate_connection
+        )
 
     def genDeviceLayout(self):
         self.grid = self.tech.getGridResolution()
@@ -155,17 +205,20 @@ class mos_base(DeviceBase):
         self.epsilon = self.techparams['epsilon1']
 
         # Ensure w and l are in um (pmos approach)
+        # Protection from huge size
+        if self.w > 200:
+            print('Warning: detecting big device, dividing it by 1e6')
+            self.w *= 1e-6
+            self.l *= 1e-6
         w = self.w
         l = self.l
-        if w < 1:
-            w = w * 1e6
-        if l < 1:
-            l = l * 1e6
+        
             
         ng = self.ng
         
         start_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
         start_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
+        self.use_poly_pin = False if not hasattr(self, 'use_poly_pin') else self.use_poly_pin
 
         typ = self.typ
         hv = self.hv
@@ -320,11 +373,11 @@ class mos_base(DeviceBase):
             else:
                 MkPin(self, pinname, 3, cnt_box, metall_layer_pin)
         except: pass ##print(f"Pin {pinname} already exist")
-
+        s_diff_box = Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec)
         if typ == 'N' :
-            dbCreateRect(self, ndiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec))
+            dbCreateRect(self, ndiff_layer, s_diff_box)
         else :  # typ == 'P'
-            dbCreateRect(self, pdiff_layer, Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec))
+            dbCreateRect(self, pdiff_layer, s_diff_box)
 
         for i in range(1, int(ng)+1) :
             # draw the poly line
@@ -372,12 +425,12 @@ class mos_base(DeviceBase):
             if onep(i) :
                 pinname = 'G'
                 try:
-                    if typ == 'P':
+                    if typ == 'P' and self.use_poly_pin:
                         # pmos uses poly_layer for pin
                         # pmosHV uses poly_layer_pin for pin
                         p_layer_pin = poly_layer_pin if hv else poly_layer
                         MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), p_layer_pin)
-                    else:
+                    elif self.use_poly_pin:
                         MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer_pin)
                 except: pass ##print(f'Pinname {pinname} already exists')
 
@@ -412,10 +465,11 @@ class mos_base(DeviceBase):
 
         # now finish drawing the diffusion
         xdiff_end = xcont_end+cont_Activ_overRec
+        diff_box = Box(xdiff_beg, ydiff_beg+diffoffset, xdiff_end, ydiff_end+diffoffset)
         if typ == 'N' :
-            dbCreateRect(self, ndiff_layer, Box(xdiff_beg, ydiff_beg+diffoffset, xdiff_end, ydiff_end+diffoffset))
+            dbCreateRect(self, ndiff_layer, diff_box)
         else :
-            dbCreateRect(self, pdiff_layer,  Box(xdiff_beg, ydiff_beg+diffoffset, xdiff_end, ydiff_end+diffoffset))
+            dbCreateRect(self, pdiff_layer,  diff_box)
             dbCreateRect(self, pdiffx_layer, Box(xdiff_beg-psd_pActiv_over, ypoly_beg-psd_PFET_over+gatpoly_Activ_over+diffoffset, xdiff_end+psd_pActiv_over, ypoly_end+psd_PFET_over-gatpoly_Activ_over+diffoffset))
             # draw minimum nWell
             nwell_offset = max(0, GridFix((contActMin-w)/2+0.5*self.grid))
@@ -448,5 +502,35 @@ class mos_base(DeviceBase):
                 dbCreateRect(self, tgo_layer,
                              Box(xdiff_beg - thGateOxAct, ydiff_beg - gatpoly_Activ_over - thGateOxGat,
                                  xdiff_end + thGateOxAct, ydiff_end + gatpoly_Activ_over + thGateOxGat))
-
+        
+        ## Placing dummies beside the generated device
+        if self.dummies_count > 0:
+            params = {
+                'l': self.dummies_l, #Updating the new device lenght into the dummy length
+                'w': self.w*1e-6,
+                'ng': 1,
+                'gate_connection': 'T-B',
+                's_d_mlayer': 'M1',
+                'gate_metal': 'M1',
+                'cnt_w_ratio': 90,
+                'gate_cnt_ratio': 100,
+                'use_poly_pin': False
+            }
+            (width, _) = mos_base.get_dimensions(
+                    w=params['w']*1e6, 
+                    l=params['l']*1e6, 
+                    ng=params['ng'],
+                    techparams= self.techparams,
+                    gate_connection = params['gate_connection']
+                )
+            if self.dummies_left:
+                for i in range(self.dummies_count):
+                    x_pos = diff_box.left - self.dummy_core_spacing - i*(self.dummies_inner_spacing) - (i+1)*width
+                    self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+            if self.dummies_right:
+                for i in range(self.dummies_count):
+                    x_pos = diff_box.right + i*(self.dummies_inner_spacing) + (i)*width  + self.dummy_core_spacing
+                    self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+                        
+        
         return self._getCurrentCellContext()

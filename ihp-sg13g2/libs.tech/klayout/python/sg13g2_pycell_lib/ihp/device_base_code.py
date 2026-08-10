@@ -51,6 +51,7 @@ from .via_stack_code import *
 class DeviceBase(DloGen):
     @classmethod
     def defineParamSpecs(cls, specs):
+        cls.techparams = specs.tech.getTechParams()
         def_tap = {'north': True, 'south': True, 'west': True, 'east': True} if not hasattr(cls, 'default_tap') else cls.default_tap
         choices = [c.value for c in cls.validGuardRingTypes()]
         
@@ -59,27 +60,72 @@ class DeviceBase(DloGen):
         
         specs('guardRingType', cls.default_ring, 'Guard Ring Type', ChoiceConstraint(choices))
         specs('guardRingDistance', cls.default_distance, 'Guard Ring Distance')
+        specs('guardRingWidth', '0.3u', 'Guard Ring Width')
         specs('north', def_tap['north'], 'Include North Side', BooleanConstraint())
         specs('south', def_tap['south'], 'Include South Side', BooleanConstraint())
         specs('west', def_tap['west'], 'Include West Side', BooleanConstraint())
         specs('east', def_tap['east'], 'Include East Side', BooleanConstraint())
         #specs('guardRingArray', False, 'Array Ring',ChoiceConstraint([True, False]))
-        # specs('rows', 1, 'Number of rows')
-        # specs('row_distance', '0u', 'Distance between rows')
-        # specs('cells', 1, 'Number of cells')
-        # specs('cell_distance', '0u', 'Distance between cells')
+        if hasattr(cls, 'is_array') and cls.is_array:
+            specs('rows', 1, 'Number of rows')
+            specs('row_distance', '0u', 'Distance between rows')
+            specs('tap_rows', True, 'Tap Between Rows', BooleanConstraint())
+            specs('cells', 1, 'Number of cells')
+            specs('cell_distance', '0u', 'Distance between cells')
+            specs('tap_cells', True, 'Tap Between Cells', BooleanConstraint())
 
     def setupParams(self, params):
         # process parameter values entered by user
-        self.guardRingType     = GuardRingType(params['guardRingType'])
-        self.guardRingDistance = Numeric(params['guardRingDistance'])*1e6
-        self.guardRingShape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
+        self.guardRingType = 'none'
+        self.rows = 1
+        self.cells = 1
+        if 'guardRingType' in params and params['guardRingType'] != 'none':
+            self.guardRingType     = GuardRingType(params['guardRingType'])
+            self.guardRingDistance = Numeric(params['guardRingDistance'])*1e6
+            self.guardRingShape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
+            self.guardRingWidth = Numeric(params['guardRingWidth'])*1e6
         #self.guardRingArray = params['guardRingArray'] == 'yes'
-        # self.cells = int(params['cells'])
-        # self.rows = int(params['rows'])
-        # self.row_distance = Numeric(params['row_distance'])
-        # self.cell_distance = Numeric(params['cell_distance'])
-
+            if hasattr(self, 'is_array') and self.is_array:
+                self.cells = int(params['cells'])
+                self.rows = int(params['rows'])
+                self.row_distance = Numeric(params['row_distance'])*1e6
+                self.cell_distance = Numeric(params['cell_distance'])*1e6
+                self.tap_rows = params['tap_rows']
+                self.tap_cells= params['tap_cells']
+    
+    def instanciate_self(self, params, position):
+        """
+            Function to recreate the same object with different params
+            Reusing the genDeviceLayout function
+        """
+        
+        device = self.__class__()
+        device.tech = self.tech
+        device._getCurrentCellContext = self._getCurrentCellContext
+        device.setupParams(params)
+        device.sx = position.x
+        device.sy = position.y
+        device.genDeviceLayout()
+        return device
+    
+    @staticmethod
+    def fix_params_micro_unit(params, keys):
+        """
+            Function to prevent if the user enter big values (entring 1 instead of 1u)
+        """
+        for key in keys:
+            print(f'checking key: {key}')
+            if key in params and not str(params[key]).endswith('u'):
+                if float(params[key]) > 0.13:
+                    params[key] = params[key].strip()+'u'
+    
+    @staticmethod
+    def get_dimensions(w, l, ng, techparams, gate_connection='T-B'):
+        """
+        Template method for subclasses to overwrite
+        """
+        return 0,0
+    
     @abstractmethod
     def genDeviceLayout(self):
         """
@@ -160,8 +206,52 @@ class DeviceBase(DloGen):
                                 w=w,
                                 h=h,
                                 x_center=x_center,
-                                y_center=y_center)
-    def genLayout(self):
+                                y_center=y_center,
+                                t=self.guardRingWidth)
+    
+    def genArray(self):
         self.genDeviceLayout()
+        return
+        techparams = self.techparams
+        cont_min_act_encl = techparams['Cnt_c']
+        cont_size = techparams['Cnt_a']
+        pdiffx_over = techparams['pSD_c1']
+        tap_width = cont_min_act_encl*2 + pdiffx_over*2 + cont_size
+        tap_width = max(self.guardRingWidth, tap_width)
+        device_dimentions = (0,0)
+        if hasattr(self, 'gate_connection'):
+            device_dimentions = self.get_dimensions(self.w, self.l, self.ng, self.techparams, self.gate_connection)
+        
+        x_inner = self.cell_distance
+        x_inner = 2*self.guardRingDistance + tap_width if self.tap_cells else x_inner
+        
+        y_inner = self.row_distance
+        y_inner = 2*self.guardRingDistance + tap_width if self.tap_rows else y_inner
+        
+        
+        
+        for i in range(self.rows):
+            for j in range(self.cells):
+                self.sx =  device_dimentions[0]*i + x_inner*i
+                self.sy = device_dimentions[1]*j + y_inner*j
+                tap_bbox_width = device_dimentions[0] + 2*self.guardRingDistance - tap_width
+                tap_bbox_height = device_dimentions[1] + 2*self.guardRingDistance
+                tap_x_center = (i+1)*tap_bbox_width/2 + tap_bbox_width*i + (i+1)*tap_width/2
+                tap_y_center = (j+1)*tap_bbox_height/2 + tap_bbox_height*j - (j+1)*tap_width
+                self.genDeviceLayout()
+                if self.rows - 1 or self.cells -1:
+                    shape = ''
+                    if i < self.rows - 1:
+                        shape += 'e'
+                    if j > 0:
+                        shape += 's'
+                    generate_guard_ring(self, self.guardRingType, shape, tap_bbox_width, tap_bbox_height, tap_x_center, tap_y_center, self.guardRingWidth)
+    
+    
+    def genLayout(self):
+        self.genArray()
+        if (self.rows - 1 or self.cells -1) and False:  
+            pdiffx_over = techparams['pSD_c1']
+            self.guardRingDistance = -pdiffx_over
         self.run_gen_guard_ring()
         

@@ -73,7 +73,8 @@ def generate_guard_ring(dlo_gen: DloGen,
                         w: float,
                         h: float,
                         x_center: float,
-                        y_center: float):
+                        y_center: float,
+                        t: float = 0.3):
     dlo_gen.grid = dlo_gen.tech.getGridResolution()
     techparams = dlo_gen.tech.getTechParams()
 
@@ -121,6 +122,7 @@ def generate_guard_ring(dlo_gen: DloGen,
     #*************************************************************************
 
     wguard_active = cont_size + 2 * cont_min_act_encl
+    wguard_active = max(t, wguard_active)
 
     wguard_met1 = wguard_active
     # wguard_met1 = max(cont_size, min_metal1_width) + 2 * min_metal1_cont_encl  # metal1 guardring width
@@ -128,13 +130,15 @@ def generate_guard_ring(dlo_gen: DloGen,
     nbulay_over = (nbulay_min_w - wguard_active) / 2.0
 
     # guardring
-    xl = -w / 2.0 + x_center
-    yb = -h / 2.0 + y_center
-    xr =  w / 2.0 + x_center
-    yt =  h / 2.0 + y_center
+    ## Update: The boundary box now is inside the Active (not outside it)
+    xl = -w / 2.0 + x_center - wguard_active
+    yb = -h / 2.0 + y_center - wguard_active
+    xr =  w / 2.0 + x_center + wguard_active
+    yt =  h / 2.0 + y_center + wguard_active
 
     def draw_contacted_ring(xl: float, yb: float, xr: float, yt: float, width: float):
         # NOTE: xl / yb / xr / yt defines the outer bounds of the guard ring
+        # UPDATE: The sides now are selectable
 
         bottom_box = Box(xl,         yb,          xr,          yb + width)
         top_box    = Box(xl,         yt - width,  xr,          yt)
@@ -164,12 +168,13 @@ def generate_guard_ring(dlo_gen: DloGen,
             else:
                 remainder = available_span - min_span
                 num_contacts = min_contacts
-            return num_contacts, remainder
+            return max(num_contacts,1), remainder
 
         h_available_span = bottom_box.right - bottom_box.left - 2 * cont_min_act_encl
         v_available_span =  left_box.top - left_box.bottom + 2 * cont_min_act_encl - 2 * cont_space
         h_num_contacts, h_remainder = num_contacts_and_remainder(h_available_span)
         v_num_contacts, v_remainder = num_contacts_and_remainder(v_available_span)
+        t_num_contacts, t_remainder = num_contacts_and_remainder(t - 2 * cont_min_act_encl)
         boxes_enum = ()
         if 's' in guard_ring_shape:
             boxes_enum += (bottom_box,)
@@ -177,12 +182,19 @@ def generate_guard_ring(dlo_gen: DloGen,
             boxes_enum += (top_box,)
         for box in boxes_enum:
             x1 = box.left + cont_min_act_encl
-            y_bot = box.bottom + cont_min_act_encl
-            y_top = y_bot + cont_size
+            y_bot = box.bottom + cont_min_act_encl if t_num_contacts > 1 else box.bottom + (wguard_active - cont_size)/2
+            #y_top = y_bot + cont_size
             for i in range(0, h_num_contacts):
                 x2 = x1 + cont_size
-                contact_box = Box(x1, y_bot, x2, y_top)
-                dbCreateRect(dlo_gen, cont, contact_box)
+                y1 = y_bot
+                for j in range(0, t_num_contacts):
+                    y2 = y1 + cont_size
+                    contact_box = Box(x1, y1, x2, y2)
+                    dbCreateRect(dlo_gen, cont, contact_box)
+                    if j + 1 == floor(t_num_contacts / 2.0):
+                        y1 = y2 + t_remainder
+                    else:
+                        y1 = y2 + cont_space
                 if i + 1 == floor(h_num_contacts / 2.0):
                     x1 = x2 + h_remainder
                 else:
@@ -194,12 +206,20 @@ def generate_guard_ring(dlo_gen: DloGen,
             boxes_enum += (right_box,)
         for box in boxes_enum:
             y1 = box.bottom - cont_min_act_encl + cont_space
-            x_left = box.left + cont_min_act_encl
-            x_right = x_left + cont_size
+            x_left = box.left + cont_min_act_encl  if t_num_contacts > 1 else box.left + (wguard_active - cont_size)/2
+            #x_right = x_left + cont_size
             for i in range(0, v_num_contacts):
                 y2 = y1 + cont_size
-                contact_box = Box(x_left, y1, x_right, y2)
-                dbCreateRect(dlo_gen, cont, contact_box)
+                x1 = x_left
+                for j in range(0, t_num_contacts):
+                    x2 = x1 + cont_size
+                    contact_box = Box(x1, y1, x2, y2)
+                    dbCreateRect(dlo_gen, cont, contact_box)
+                    if j + 1 == floor(t_num_contacts / 2.0):
+                        x1 = x2 + t_remainder
+                    else:
+                        x1 = x2 + cont_space
+                    
                 if i + 1 == floor(v_num_contacts / 2.0):
                     y1 = y2 + v_remainder
                 else:
@@ -264,8 +284,9 @@ class guard_ring(DloGen):
     @classmethod
     def defineParamSpecs(cls, specs):
         specs('type', 'ntap', 'Guard Ring Type', ChoiceConstraint(['nwell', 'psub', 'nwell_cmos']))  # 'dnwell'
-        specs('w', '3.05u', 'Width')
-        specs('h', '3.05u', 'Height')
+        specs('w', '3.05u', 'Box Width')
+        specs('h', '3.05u', 'Box Height')
+        specs('t', '0.3u', 'Tap Width')
         specs('north', True, 'Include North Side',BooleanConstraint())
         specs('south', True, 'Include South Side',BooleanConstraint())
         specs('west', True, 'Include West Side',BooleanConstraint())
@@ -277,6 +298,7 @@ class guard_ring(DloGen):
         self.type = params['type']
         self.w = Numeric(params['w'])*1e6
         self.h = Numeric(params['h'])*1e6
+        self.t = Numeric(params['t'])*1e6
         self.shape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
 
     def genLayout(self):
@@ -286,4 +308,5 @@ class guard_ring(DloGen):
                             w=self.w,
                             h=self.h,
                             x_center=0.0,
-                            y_center=0.0)
+                            y_center=0.0,
+                            t=self.t)

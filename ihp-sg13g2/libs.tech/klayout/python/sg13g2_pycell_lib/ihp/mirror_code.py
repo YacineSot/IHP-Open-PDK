@@ -72,11 +72,13 @@ class mirror(DeviceBase):
         specs('connected_gate_devs', '', 'Devices which gates connected together')
         specs('connected_source_devs', '', 'Devices which sources connected together')
         specs('dummies_count', 2, 'Number of dummies')
+        specs('inner_dummies_count',0,'Number of dummies between devices')
+        specs('dummy_l', '0.5u', 'Dummy length')
         specs('dummies_offset', '0.2u', 'Distance between core and dummy')
         specs('dummies_distance', '0.2u', 'Distance between dummies')
         specs('place_taps', False, 'Place taps between devices', BooleanConstraint())
         super().defineParamSpecs(specs)
-        specs('guard_ring_ref', 'active', 'Guard ring distance referance', ChoiceConstraint(['active', 'full']))
+        #specs('guard_ring_ref', 'active', 'Guard ring distance referance', ChoiceConstraint(['active', 'full']))
 
     def setupParams(self, params):
         # process parameter values entered by user
@@ -90,7 +92,7 @@ class mirror(DeviceBase):
         # self.s_d_mlayer = params['s_d_mlayer']
         # self.grid_link = params['grid_link']
         self.grid_link = 'T-B'
-        self.guard_ring_ref = params['guard_ring_ref']
+        self.guard_ring_ref = 'full'
         self.separation = ' '
         # self.gate_metal = params['gate_mlayer']
         self.layout_pattern = self.fix_string(params['layout_pattern'], self.separation)
@@ -104,6 +106,8 @@ class mirror(DeviceBase):
         self.connection_width = Numeric(params['connection_metal_width'])*1e6
         self.connections_distance = Numeric(params['connection_metal_distance'])*1e6
         self.dummies_count = int(params['dummies_count'])
+        self.inner_dummies_count = int(params['inner_dummies_count'])
+        self.dummy_l = Numeric(params['dummy_l'])
         self.dummies_offset = Numeric(params['dummies_offset'])*1e6
         self.dummies_distance = Numeric(params['dummies_distance'])*1e6
         self.place_taps = params['place_taps']
@@ -148,12 +152,12 @@ class mirror(DeviceBase):
         return (min_left, min_bottom, max_right, max_top)
 
     
-    def genMos(self,main_device, x_pos, y_pos, connection_metal = 'M2'):
+    def genMos(self,main_device, x_pos, y_pos, connection_metal = 'M2', l=None):
         device = main_device()
         guard_ring_type = 'nwell' if 'p' in self.model_type.lower() else 'psub'
         guard_ring_type = 'none' if x_pos != 0 else guard_ring_type
         params = {'w': self.w, 
-                    'l': self.l, 
+                    'l': self.l if not l else l, 
                     'ng': 1, 
                     's_d_mlayer': connection_metal, 
                     'gate_connection': 'T-B',
@@ -167,6 +171,15 @@ class mirror(DeviceBase):
                     'west': True,
                     'east': True
                 }
+        if self.dummies_params['count'] > 0:
+            params = params | {
+                'dummies_count': self.dummies_params['count'],
+                'dummies_l': self.dummies_params['l'],
+                'dummy_core_spacing': self.dummies_params['core_spacing'],
+                'dummies_inner_spacing': self.dummies_params['inner_spacing'],
+                'dummies_left':self.dummies_params['left'],
+                'dummies_right': self.dummies_params['right']
+            }
         device.tech = self.tech
         device._getCurrentCellContext = self._getCurrentCellContext
         device.sx = x_pos
@@ -268,7 +281,35 @@ class mirror(DeviceBase):
         # if self.model_type.__contains__('pmos'):
         #     self.w = self.w * 1e-6
         #     self.l = self.l * 1e-6
-        (width, height) = main_device.get_dimensions(self.w, self.l, self.ng, self.techparams)
+        self.dummies_params = {
+            'count': self.inner_dummies_count,
+            'left': True,
+            'right': True,
+            'l': self.dummy_l,
+            'core_spacing': self.dummies_offset*1e-6,
+            'inner_spacing': 0
+        }
+        (width, height) = main_device.get_dimensions(
+                self.w*1e6, 
+                self.l*1e6, 
+                self.ng, 
+                self.techparams,
+                dummies_params=self.dummies_params
+            )
+        (dummy_width,  _) = main_device.get_dimensions(
+            self.w*1e6,
+            self.dummy_l*1e6,
+            1,
+            self.techparams
+        )
+        self.dummies_params['left'] = False
+        (dummy_onside_width, _) = main_device.get_dimensions(
+                    self.w*1e6, 
+                    self.l*1e6, 
+                    self.ng, 
+                    self.techparams,
+                    dummies_params=self.dummies_params
+                )
         cells = self.layout_pattern.upper().split(self.separation)
         cells = cells[::-1] ## because we start drowing from the bottom to the top
         cells = [self.fix_string(cell) for cell in cells]
@@ -318,6 +359,8 @@ class mirror(DeviceBase):
         
         for i in range(len(cells[0])):
             for j,r in enumerate(cells):
+                self.dummies_params['left'] = i > 0
+                self.dummies_params['right'] = i < len(cells[0])-1
                 device_char = r[i]
                 position = {
                     # X position: Outer gap + width of all previous devices + inner gaps of all previous devices
@@ -343,26 +386,27 @@ class mirror(DeviceBase):
         #             Generate DUMMIES              #
         #############################################
         dummy_connection1 = {'top': None, 'bottom': None, 'left': None, 'right': None}     
-        dummy_connection2 = {'top': None, 'bottom': None, 'left': None, 'right': None}     
+        dummy_connection2 = {'top': None, 'bottom': None, 'left': None, 'right': None}
+        self.dummies_params['count'] = 0
         for i in range(self.dummies_count):
             for j in range(len(cells)):
                position = {
                 # X position: Outer gap + width of all previous devices + inner gaps of all previous devices
-                "x": x_outer_l - self.dummies_offset - (i+1)*(width + self.dummies_distance ), 
+                "x": x_outer_l - self.dummies_offset - (i+1)*(dummy_width + self.dummies_distance ), 
                 # Y position: Outer gap + height of all previous devices + inner gaps of all previous devices
                 "y": (y_outer_b if 'B' in self.grid_link else 0) + j*height + j*y_inner}
-               device = self.genMos(main_device, position['x'] , position['y'], 'M1')
+               device = self.genMos(main_device, position['x'] , position['y'], 'M1', self.dummy_l)
                if j == 0 and i == 0:
                    dummy_connection1['bottom'] = device.gate_box_b.bottom
-               if j == (len(cells)-1) and i == 0:
+               if j == (len(cells)-1) and i == 0:   
                    dummy_connection1['top'] = device.gate_box_t.top
                if i == 0 and j == 0:
                    dummy_connection1['left'] = device.drain_box.right 
                if i == (self.dummies_count - 1) and (len(cells)-1):
-                   dummy_connection1['right'] = device.source_box.left - self.guardRingDistance
+                   dummy_connection1['right'] = device.source_box.left - self.guardRingDistance - self.guardRingWidth
                dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Dummy", 'centerCenter', 'R0', Font.EURO_STYLE, self.l*1e5)
-               position['x'] = x_outer_l + self.dummies_offset + (i+1)*(width + self.dummies_distance ) + (width + x_inner)*(len(cells[0])-1)
-               device = self.genMos(main_device, position['x'] , position['y'], 'M1')
+               position['x'] = x_outer_l + self.dummies_offset + (i)*(dummy_width + self.dummies_distance ) + (width + x_inner)*(len(cells[0])-1) - width + self.dummies_distance + 2*dummy_onside_width
+               device = self.genMos(main_device, position['x'] , position['y'], 'M1', self.dummy_l)
                dbCreateLabel(self, text_layer, device.gate_box.getCenter(), f"Dummy", 'centerCenter', 'R0', Font.EURO_STYLE, self.l*1e5)
                if j == 0:
                    dummy_connection2['bottom'] = device.gate_box_b.bottom
@@ -371,7 +415,7 @@ class mirror(DeviceBase):
                if i == 0:
                    dummy_connection2['right'] = device.source_box.left
                if i == (self.dummies_count - 1):
-                   dummy_connection2['left'] = device.drain_box.right + self.guardRingDistance   
+                   dummy_connection2['left'] = device.drain_box.right + self.guardRingDistance + self.guardRingWidth
                  
         
         #############################################
@@ -386,7 +430,7 @@ class mirror(DeviceBase):
              
         # Total array dimensions
         height_offset = self.vertical_distance - self.bottom_top_distance
-        total_width = x_outer_l + len(cells[0])*width + (len(cells[0])-1)*x_inner + x_outer_r - self.horizontal_distance if len(cells[0]) > 0 else width
+        total_width = x_outer_l + (len(cells[0]) - 2)*width + 2*dummy_onside_width + (len(cells[0])-1)*x_inner + x_outer_r - self.horizontal_distance if len(cells[0]) > 0 else width
         total_height = y_outer_b + len(cells)*height + (len(cells)-2)*y_inner +  y_outer_t if len(cells) > 0 else height
         total_height = total_height + height_offset -0.48 ## offset of the gat enc + via height
         
@@ -423,7 +467,7 @@ class mirror(DeviceBase):
                     
             elif i == len(cells[0]):
                 # Gap N (Extreme Right): Only Drain buses (N_dev lines)
-                gap_start_x = x_outer_l + i*width + (i-1)*x_inner
+                gap_start_x = x_outer_l + (i-2)*width + (i-1)*x_inner + 2*dummy_onside_width
                 k = 0
                 for dev in different_devices:
                     if dev not in outer_devs_r:
@@ -438,7 +482,7 @@ class mirror(DeviceBase):
                     
             else:
                 # Inner Gaps (Between devices): Drain buses for left device, THEN Source buses for right device (2 * N_dev lines)
-                gap_start_x = x_outer_l + i*width + (i-1)*x_inner
+                gap_start_x = x_outer_l + (i - 1)*width + (i-1)*x_inner + (dummy_onside_width)
                 for k, dev in enumerate(different_devices):
                     # Drain lines (First half of the gap)
                     d_idx = k
