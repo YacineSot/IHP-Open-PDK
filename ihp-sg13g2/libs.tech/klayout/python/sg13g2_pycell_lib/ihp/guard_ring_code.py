@@ -74,7 +74,8 @@ def generate_guard_ring(dlo_gen: DloGen,
                         h: float,
                         x_center: float,
                         y_center: float,
-                        t: float = 0.3):
+                        t: float = 0.3,
+                        distribute_contacts = False):
     dlo_gen.grid = dlo_gen.tech.getGridResolution()
     techparams = dlo_gen.tech.getTechParams()
 
@@ -120,7 +121,6 @@ def generate_guard_ring(dlo_gen: DloGen,
     #* Main body of code
     #*
     #*************************************************************************
-
     wguard_active = cont_size + 2 * cont_min_act_encl
     wguard_active = max(t, wguard_active)
 
@@ -182,7 +182,7 @@ def generate_guard_ring(dlo_gen: DloGen,
             boxes_enum += (top_box,)
         for box in boxes_enum:
             x1 = box.left + cont_min_act_encl
-            y_bot = box.bottom + cont_min_act_encl if t_num_contacts > 1 else box.bottom + (wguard_active - cont_size)/2
+            y_bot = box.bottom + cont_min_act_encl if t_num_contacts > 1 and distribute_contacts else box.bottom + (wguard_active - t_num_contacts*cont_size - (t_num_contacts - 1)*cont_space)/2
             #y_top = y_bot + cont_size
             for i in range(0, h_num_contacts):
                 x2 = x1 + cont_size
@@ -191,7 +191,7 @@ def generate_guard_ring(dlo_gen: DloGen,
                     y2 = y1 + cont_size
                     contact_box = Box(x1, y1, x2, y2)
                     dbCreateRect(dlo_gen, cont, contact_box)
-                    if j + 1 == floor(t_num_contacts / 2.0):
+                    if j + 1 == floor(t_num_contacts / 2.0) and distribute_contacts:
                         y1 = y2 + t_remainder
                     else:
                         y1 = y2 + cont_space
@@ -206,7 +206,7 @@ def generate_guard_ring(dlo_gen: DloGen,
             boxes_enum += (right_box,)
         for box in boxes_enum:
             y1 = box.bottom - cont_min_act_encl + cont_space
-            x_left = box.left + cont_min_act_encl  if t_num_contacts > 1 else box.left + (wguard_active - cont_size)/2
+            x_left = box.left + cont_min_act_encl  if t_num_contacts > 1 and distribute_contacts else box.left + (wguard_active - t_num_contacts*cont_size - (t_num_contacts - 1)*cont_space)/2
             #x_right = x_left + cont_size
             for i in range(0, v_num_contacts):
                 y2 = y1 + cont_size
@@ -215,7 +215,7 @@ def generate_guard_ring(dlo_gen: DloGen,
                     x2 = x1 + cont_size
                     contact_box = Box(x1, y1, x2, y2)
                     dbCreateRect(dlo_gen, cont, contact_box)
-                    if j + 1 == floor(t_num_contacts / 2.0):
+                    if j + 1 == floor(t_num_contacts / 2.0) and distribute_contacts:
                         x1 = x2 + t_remainder
                     else:
                         x1 = x2 + cont_space
@@ -287,6 +287,8 @@ class guard_ring(DloGen):
         specs('w', '3.05u', 'Box Width')
         specs('h', '3.05u', 'Box Height')
         specs('t', '0.3u', 'Tap Width')
+        specs('distribute_contacts', False, 'Contacts Follows Active', BooleanConstraint())
+        specs('_', '-----Separator-----', '-------------', ReadOnlyConstraint())
         specs('north', True, 'Include North Side',BooleanConstraint())
         specs('south', True, 'Include South Side',BooleanConstraint())
         specs('west', True, 'Include West Side',BooleanConstraint())
@@ -300,6 +302,7 @@ class guard_ring(DloGen):
         self.h = Numeric(params['h'])*1e6
         self.t = Numeric(params['t'])*1e6
         self.shape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
+        self.distribute_contacts = params['distribute_contacts']
 
     def genLayout(self):
         generate_guard_ring(dlo_gen=self,
@@ -309,4 +312,5 @@ class guard_ring(DloGen):
                             h=self.h,
                             x_center=0.0,
                             y_center=0.0,
-                            t=self.t)
+                            t=self.t,
+                            distribute_contacts=self.distribute_contacts)

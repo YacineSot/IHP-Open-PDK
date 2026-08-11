@@ -58,14 +58,18 @@ class DeviceBase(DloGen):
         cls.default_ring = cls.default_ring if hasattr(cls, 'default_ring') else 'none'
         cls.default_distance = cls.default_distance if hasattr(cls, 'default_distance') else '0.8u'
         
+        cls.add_separation(cls, specs, "Guard Ring Settings")
         specs('guardRingType', cls.default_ring, 'Guard Ring Type', ChoiceConstraint(choices))
         specs('guardRingDistance', cls.default_distance, 'Guard Ring Distance')
         specs('guardRingWidth', '0.3u', 'Guard Ring Width')
+        specs('distribute_contacts', False, 'Contacts Follows Active', BooleanConstraint())
+        cls.add_separation(self=cls, specs=specs, separator="")
         specs('north', def_tap['north'], 'Include North Side', BooleanConstraint())
         specs('south', def_tap['south'], 'Include South Side', BooleanConstraint())
         specs('west', def_tap['west'], 'Include West Side', BooleanConstraint())
         specs('east', def_tap['east'], 'Include East Side', BooleanConstraint())
         #specs('guardRingArray', False, 'Array Ring',ChoiceConstraint([True, False]))
+        cls.add_separation(self=cls, specs=specs, separator="")
         if hasattr(cls, 'is_array') and cls.is_array:
             specs('rows', 1, 'Number of rows')
             specs('row_distance', '0u', 'Distance between rows')
@@ -78,12 +82,13 @@ class DeviceBase(DloGen):
         # process parameter values entered by user
         self.guardRingType = 'none'
         self.rows = 1
-        self.cells = 1
+        self.cells = 1  
         if 'guardRingType' in params and params['guardRingType'] != 'none':
             self.guardRingType     = GuardRingType(params['guardRingType'])
             self.guardRingDistance = Numeric(params['guardRingDistance'])*1e6
             self.guardRingShape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
             self.guardRingWidth = Numeric(params['guardRingWidth'])*1e6
+            self.distribute_contacts = params['distribute_contacts'] if 'distribute_contacts' in params else False
         #self.guardRingArray = params['guardRingArray'] == 'yes'
             if hasattr(self, 'is_array') and self.is_array:
                 self.cells = int(params['cells'])
@@ -92,6 +97,10 @@ class DeviceBase(DloGen):
                 self.cell_distance = Numeric(params['cell_distance'])*1e6
                 self.tap_rows = params['tap_rows']
                 self.tap_cells= params['tap_cells']
+    
+    
+    def add_separation(self, specs, separator = 'Separator'):
+        specs(f'_{separator}', f'----- {separator} -----','='*20, ReadOnlyConstraint())
     
     def instanciate_self(self, params, position):
         """
@@ -167,6 +176,7 @@ class DeviceBase(DloGen):
     
     def run_gen_guard_ring(self):
         if self.guardRingType != GuardRingType.NONE and self.guardRingShape:
+            self.distribute_contacts = False if not hasattr(self,'distribute_contacts') else self.distribute_contacts
             min_left = INT_MAX
             min_bottom = INT_MAX
             max_right = INT_MIN
@@ -207,7 +217,8 @@ class DeviceBase(DloGen):
                                 h=h,
                                 x_center=x_center,
                                 y_center=y_center,
-                                t=self.guardRingWidth)
+                                t=self.guardRingWidth,
+                                distribute_contacts=self.distribute_contacts)
     
     def genArray(self):
         self.genDeviceLayout()

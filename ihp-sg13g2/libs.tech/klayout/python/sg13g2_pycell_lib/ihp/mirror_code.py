@@ -44,24 +44,18 @@ class mirror(DeviceBase):
         minL       = techparams['nmos_minL']
         minW       = techparams['nmos_minW']
 
+        cls.add_separation(cls, specs, 'Version readonly')
+        
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint())
-        #specs('Display', 'Selected', 'Display', ChoiceConstraint(['All', 'Selected']))
 
+        cls.add_separation(cls, specs, 'Devices Sizing')
         specs('w' , '5u', 'Width')
-        #specs('ws',   eng_string(Numeric(defW)/Numeric(defNG)), 'SingleWidth')
         specs('l' ,   '3u', 'Length')
-        # specs('connect_sources', 'Yes', 'Connect sources?', BooleanConstraint())
-        # specs('connect_gates', 'Yes', 'Connect gates?', BooleanConstraint())
-        # specs('s_d_mlayer', 'M2', 'S/D Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
-        # specs('gate_mlayer', 'M2', 'Gate Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
-        #specs('Wmin', minW, 'Wmin')
-        #specs('Lmin', minL, 'Lmin')
-        #specs('ng',   defNG, 'Number of Gates')
-
-        #specs('m', '1', 'Multiplier')
-        #specs('trise', '', 'Temp rise from ambient')
+       
+        cls.add_separation(cls, specs, 'Model Type')
         specs('model_type', 'nmos', 'Model Type', ChoiceConstraint(['nmos', 'pmos', 'nmosHV', 'pmosHV']))
-        # specs('grid_link', 'T-B', 'Grid Links', ChoiceConstraint(['T-B','T', 'B']))
+        
+        cls.add_separation(cls, specs, 'Internal connections & patterns settings')
         specs('horizontal_distance', '0.26u', 'Horizental distance')
         specs('vertical_distance', '0.3u', 'Vertical distance')
         specs('connection_metal_width', '0.5u', 'Connection metal width')
@@ -71,14 +65,17 @@ class mirror(DeviceBase):
         specs('connect_gate_to', 'drain', 'Connect gate to: ', ChoiceConstraint(['source', 'drain']))
         specs('connected_gate_devs', '', 'Devices which gates connected together')
         specs('connected_source_devs', '', 'Devices which sources connected together')
+        
+        cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', 2, 'Number of dummies')
         specs('inner_dummies_count',0,'Number of dummies between devices')
         specs('dummy_l', '0.5u', 'Dummy length')
         specs('dummies_offset', '0.2u', 'Distance between core and dummy')
         specs('dummies_distance', '0.2u', 'Distance between dummies')
         specs('place_taps', False, 'Place taps between devices', BooleanConstraint())
+        
+        cls.default_ring = 'auto'
         super().defineParamSpecs(specs)
-        #specs('guard_ring_ref', 'active', 'Guard ring distance referance', ChoiceConstraint(['active', 'full']))
 
     def setupParams(self, params):
         # process parameter values entered by user

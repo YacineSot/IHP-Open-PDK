@@ -57,27 +57,33 @@ class mos_base(DeviceBase):
         minL       = techparams[cls.model_type+ '_minL']
         minW       = techparams[cls.model_type+ '_minW']
 
+        cls.add_separation(cls,specs, 'Version & model name readonly')
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint())
         #specs('Display', 'Selected', 'Display', ChoiceConstraint(['All', 'Selected']))
         specs('model', model, 'Model name', ReadOnlyConstraint())
 
+        cls.add_separation(cls, specs, 'Device Sizing')
         specs('w' ,   defW, 'Width')
         specs('cnt_w_ratio', 100, 'Contact width ratio %', RangeConstraint(1, 100))
         specs('l' ,   defL, 'Length')
         specs('gate_cnt_ratio', 100, 'Gate Length contact ratio %', RangeConstraint(1, 100))
         specs('ng',   defNG, 'Number of Gates')
 
+        cls.add_separation(cls, specs, 'Contacts settings')
         specs('s_d_mlayer', 'M2', 'S/D Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
         specs('gate_connection', 'T-B', 'Gate contact position', ChoiceConstraint(['T-B', 'T', 'B', 'none']))
         specs('gate_metal', 'M2', 'Gate contact metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
         specs('use_poly_pin', False, 'Create poly pin', BooleanConstraint())
         
+        cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', '0', 'Dummies Count')
         specs('dummies_l', '0.13u', 'Dummies Lenght')
         specs('dummy_core_spacing', '0.3u', 'Dummy-Core Spacing')
         specs('dummies_inner_spacing', '-0.3u', 'Dummies Inner Spacing')
         specs('dummies_left', True, 'Place Dummies on the left', BooleanConstraint())
+        specs('overlap_left', True, 'Overlap left dummiy with diffusion', BooleanConstraint())
         specs('dummies_right', True, 'Place Dummies on the right', BooleanConstraint())
+        specs('overlap_right', True, 'Overlap right dummiy with diffusion', BooleanConstraint())
         
         super().defineParamSpecs(specs)
         
@@ -117,6 +123,8 @@ class mos_base(DeviceBase):
             self.dummies_inner_spacing = Numeric(params['dummies_inner_spacing'])*1e6
             self.dummies_left = params['dummies_left']
             self.dummies_right = params['dummies_right']
+            self.overlap_left = params['overlap_left']
+            self.overlap_right = params['overlap_right']
         else:
             self.dummies_count = 0
 
@@ -524,12 +532,14 @@ class mos_base(DeviceBase):
                     gate_connection = params['gate_connection']
                 )
             if self.dummies_left:
+                left_spacing = self.dummy_core_spacing if not self.overlap_left else -0.3
                 for i in range(self.dummies_count):
-                    x_pos = diff_box.left - self.dummy_core_spacing - i*(self.dummies_inner_spacing) - (i+1)*width
+                    x_pos = diff_box.left - left_spacing - i*(self.dummies_inner_spacing) - (i+1)*width
                     self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
             if self.dummies_right:
+                right_spacing = self.dummy_core_spacing if not self.overlap_right else -0.3
                 for i in range(self.dummies_count):
-                    x_pos = diff_box.right + i*(self.dummies_inner_spacing) + (i)*width  + self.dummy_core_spacing
+                    x_pos = diff_box.right + i*(self.dummies_inner_spacing) + (i)*width  + right_spacing
                     self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
                         
         
