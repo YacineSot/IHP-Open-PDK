@@ -429,7 +429,7 @@ class mirror(DeviceBase):
         height_offset = self.vertical_distance - self.bottom_top_distance
         total_width = x_outer_l + (len(cells[0]) - 2)*width + 2*dummy_onside_width + (len(cells[0])-1)*x_inner + x_outer_r - self.horizontal_distance if len(cells[0]) > 0 else width
         total_height = y_outer_b + len(cells)*height + (len(cells)-2)*y_inner +  y_outer_t if len(cells) > 0 else height
-        total_height = total_height + height_offset -0.48 ## offset of the gat enc + via height
+        total_height = total_height + height_offset -0.32 + self.bottom_top_distance ## offset of the gat enc + via height
         
         self.gate_connection_horizontal_shift = 0
         
@@ -554,7 +554,7 @@ class mirror(DeviceBase):
                     
             elif j == len(cells) and 'T' in self.grid_link:
                 # Gap M (Extreme Top): Only Drain buses (N_dev lines)
-                gap_start_y = j*height + (j-1)*y_inner - 0.48
+                gap_start_y = j*height + (j-1)*y_inner - 0.32 + self.bottom_top_distance
                 gap_start_y = gap_start_y + y_outer_b if 'B' in self.grid_link else gap_start_y
                 for k, dev in enumerate(different_devices):
                     # Drain lines
