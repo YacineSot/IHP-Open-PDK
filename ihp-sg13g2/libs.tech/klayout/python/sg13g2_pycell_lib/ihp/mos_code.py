@@ -77,7 +77,7 @@ class mos_base(DeviceBase):
         
         cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', '0', 'Dummies Count')
-        specs('dummies_l', '0.13u', 'Dummies Lenght')
+        specs('dummies_l', defL, 'Dummies Lenght')
         specs('dummy_core_spacing', '0.3u', 'Dummy-Core Spacing')
         specs('dummies_inner_spacing', '-0.3u', 'Dummies Inner Spacing')
         specs('dummies_left', True, 'Place Dummies on the left', BooleanConstraint())
@@ -520,7 +520,7 @@ class mos_base(DeviceBase):
                 'gate_connection': 'T-B',
                 's_d_mlayer': 'M1',
                 'gate_metal': 'M1',
-                'cnt_w_ratio': 90,
+                'cnt_w_ratio': self.cnt_w_ratio,
                 'gate_cnt_ratio': 100,
                 'use_poly_pin': False
             }
