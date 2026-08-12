@@ -520,7 +520,7 @@ class mos_base(DeviceBase):
                 'gate_connection': 'T-B',
                 's_d_mlayer': 'M1',
                 'gate_metal': 'M1',
-                'cnt_w_ratio': self.cnt_w_ratio,
+                'cnt_w_ratio': self.cnt_w_ratio*100,
                 'gate_cnt_ratio': 100,
                 'use_poly_pin': False
             }
