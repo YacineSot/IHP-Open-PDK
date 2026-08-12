@@ -43,14 +43,7 @@ import tempfile
 import traceback
 
 moduleNames = [
-        'nmos_code',
-        'nmosHV_code',
-        'pmos_code',
-        'pmosHV_code',
         'cmim_code',
-        'rsil_code',
-        'rhigh_code',
-        'rppd_code',
         'sealring_code',
         'npn13G2_code',
         'npn13G2L_code',
@@ -58,8 +51,7 @@ moduleNames = [
         'inductor2_code',
         'inductor3_code',
         'dantenna_code',
-        'dpantenna_code',
-        'via_stack_code',
+        'dpantenna_code',        
         'ptap1_code',
         'ntap1_code',
         'bondpad_code',
@@ -74,7 +66,18 @@ moduleNames = [
         'SVaricap_code',
         'pnpMPA_code',
         'isolbox_code',
-        'schottky_code',
+        'schottky_code'
+]
+
+custom_moduleNames = [
+        'nmos_code',
+        'nmosHV_code',
+        'pmos_code',
+        'pmosHV_code',
+        'rsil_code',
+        'rhigh_code',
+        'rppd_code',
+        'via_stack_code',
         'guard_ring_code',
         'mirror_code',
         #'mirror_ihp_code',
@@ -166,7 +169,7 @@ if the environment variable 'IHP_PYCELL_LIB_PRINT_DEFINES_SET' is set.
 
 """
 class PyCellLib(pya.Library):
-    def __init__(self):
+    def __init__(self, lib_name = 'SG13_dev', moduleNames = moduleNames):
         self.description = "IHP SG13G2 Pcells"
 
         tech = Tech.get('SG13_dev')
@@ -258,8 +261,9 @@ class PyCellLib(pya.Library):
         if os.getenv('IHP_PYCELL_LIB_PRINT_DEFINES_SET') is not None:
             print(f"Current defines set: {definesSetToPrint}")
 
-        self.register("SG13_dev")
+        self.register(lib_name)
 
 # instantiate and register the library
 PyCellLib()
+PyCellLib(lib_name="SG13_custom_dev", moduleNames=custom_moduleNames)
 

@@ -77,7 +77,7 @@ class mos_base(DeviceBase):
         
         cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', '0', 'Dummies Count')
-        specs('dummies_l', defL, 'Dummies Lenght')
+        specs('dummies_l', defL, 'Dummies Length')
         specs('dummy_core_spacing', '0.3u', 'Dummy-Core Spacing')
         specs('dummies_inner_spacing', '-0.3u', 'Dummies Inner Spacing')
         specs('dummies_left', True, 'Place Dummies on the left', BooleanConstraint())
