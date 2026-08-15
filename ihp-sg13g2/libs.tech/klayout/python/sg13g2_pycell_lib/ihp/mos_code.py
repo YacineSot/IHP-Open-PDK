@@ -56,6 +56,8 @@ class mos_base(DeviceBase):
         defNG      = techparams[cls.model_type+'_defNG']
         minL       = techparams[cls.model_type+ '_minL']
         minW       = techparams[cls.model_type+ '_minW']
+        Mn_size    = techparams['Mn_a']
+        Mn_space   = techparams['Mn_b']
 
         cls.add_separation(cls,specs, 'Version & model name readonly')
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint())
@@ -68,6 +70,13 @@ class mos_base(DeviceBase):
         specs('l' ,   defL, 'Length')
         specs('gate_cnt_ratio', 100, 'Gate Length contact ratio %', RangeConstraint(1, 100))
         specs('ng',   defNG, 'Number of Gates')
+        specs('split_width', True, 'Split the width over the number of gate', BooleanConstraint())
+        specs('connect_diffusions', True, 'Auto connect S/D diffusions', BooleanConstraint())
+        specs('connect_gates', True, 'Auto connect gates', BooleanConstraint())
+        specs('connect_gates_use_poly', True, 'Connect gates using poly', BooleanConstraint())
+        specs('connection_width', f'{Mn_size}u', 'Connection Width')
+        specs('connection_spacing', f'{Mn_space}u', 'Connection Spacing')
+        specs('odd_vertical', True, 'Vertical metals odd', BooleanConstraint())
 
         cls.add_separation(cls, specs, 'Contacts settings')
         specs('s_d_mlayer', 'M2', 'S/D Metal layer', ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
@@ -109,6 +118,12 @@ class mos_base(DeviceBase):
         self.w = Numeric(params['w'])*1e6
         self.l = Numeric(params['l'])*1e6
         self.ng = int(params['ng'])
+        self.split_width = params['split_width'] if 'split_width' in params else False
+        self.connect_diffusions = params['connect_diffusions'] if 'connect_diffusions' in params else False
+        self.connection_width = Numeric(params['connection_width'])*1e6 if 'connection_width' in params else 0.21
+        self.connection_spacing = Numeric(params['connection_spacing'])*1e6 if 'connection_spacing' in params else 0.24
+        self.connect_gates = params['connect_gates'] if 'connect_gates' in params else False
+        self.connect_gates_use_poly = params['connect_gates_use_poly'] if 'connect_gates_use_poly' in params else False
         
         self.cnt_w_ratio = int(params['cnt_w_ratio'])
         self.gate_cnt_ratio = int(params['gate_cnt_ratio'])
@@ -129,6 +144,8 @@ class mos_base(DeviceBase):
             self.dummies_count = 0
 
         super().setupParams(params)
+        self.vertical_layers = self.odd_layers if 'odd_vertical' in params and params['odd_vertical'] else self.even_layers
+        self.horizontal_layers = self.even_layers if 'odd_vertical' in params and params['odd_vertical'] else self.odd_layers
 
     @classmethod
     def validGuardRingTypes(cls) -> List[GuardRingType]:
@@ -255,6 +272,7 @@ class mos_base(DeviceBase):
         poly_layer_pin = Layer('GatPoly', 'pin')
         locint_layer = Layer('Cont', 'drawing')     # 6
         metall_layer = Layer('Metal1', 'drawing')   # 8
+        metal2_layer = Layer('Metal2', 'drawing')   # 8
         metall_layer_pin = Layer('Metal1', 'pin')
         pdiffx_layer = Layer('pSD', 'drawing')      # 14
         well_layer = Layer('NWell', 'drawing')      # 31
@@ -289,11 +307,16 @@ class mos_base(DeviceBase):
         thGateOxAct = self.techparams['TGO_a']
 
         ng = math.floor(Numeric(ng)+self.epsilon)
-        w = w/ng
+        w = w/ng if self.split_width else w
         w = GridFix(w)
         l = GridFix(l)
         cnt_ratio = self.cnt_w_ratio
         gate_cnt_ratio = self.gate_cnt_ratio
+        sources = [] # to save the different source contacts for a multi-finger device
+        drains = [] # to save the different drain contacts for a multi-finger device
+        gates = [] # to save the different gate boxes for a multi-finger device
+        gates_t = [] #to save the different top gate_contacts
+        gates_b = [] # to save the different bottom gate_contacts
 
         # *************************************************************************
         # *
@@ -366,6 +389,7 @@ class mos_base(DeviceBase):
         cnt_box = Box(xcont_beg-cont_metall_over, yMet1 + ratio_offset, xcont_end+cont_metall_over, yMet2 - ratio_offset)
         dbCreateRect(self, metall_layer, cnt_box)
         self.source_box = cnt_box
+        sources.append(cnt_box)
         
         # draw contacts
         contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg + ratio_offset, xcont_end, ydiff_end+diffoffset*2 - ratio_offset, 0, cont_Activ_overRec, cont_size, cont_dist)
@@ -376,9 +400,7 @@ class mos_base(DeviceBase):
             
         pinname = 'S'
         try:
-            if typ == 'P':
-                MkPin(self, pinname, 3, cnt_box, metall_layer)
-            else:
+            if self.use_poly_pin:
                 MkPin(self, pinname, 3, cnt_box, metall_layer_pin)
         except: pass ##print(f"Pin {pinname} already exist")
         s_diff_box = Box(xcont_beg-cont_Activ_overRec, ycont_beg-cont_Activ_overRec, xcont_end+cont_Activ_overRec, ycont_beg+cont_size+cont_Activ_overRec)
@@ -399,6 +421,7 @@ class mos_base(DeviceBase):
             ## Drow gate poly        
             gate_box = Box(xpoly_beg, ypoly_beg+diffoffset-gate_offset, xpoly_end, ypoly_end+diffoffset+gate_offset)
             self.gate_box = gate_box
+            gates.append(gate_box)
             dbCreateRect(self, poly_layer, gate_box)
             ## Drow gate contacts
             if self.gate_connection != 'none':
@@ -411,6 +434,7 @@ class mos_base(DeviceBase):
                     # self.genVia(gate_cnt_width, 0, GridFix(l/2+xpoly_beg), GridFix(-cont_dist_act - cont_size/2 - additional_offset), 'GatPoly', metal_layer, True)
                     gate_cnt_box = self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.bottom), 'GatPoly', metal_layer, True, 'centerTop')
                     self.gate_box_b = gate_cnt_box
+                    gates_b.append(gate_cnt_box)
                     
                 ### Top contacts
                 if 'T' in self.gate_connection:
@@ -418,6 +442,7 @@ class mos_base(DeviceBase):
                     # self.genVia(gate_cnt_width, 0, GridFix(l/2+xpoly_beg), GridFix(top_distace + cont_dist_act + cont_size/2  + additional_offset), 'GatPoly', metal_layer, True)
                     gate_cnt_box = self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.top), 'GatPoly', metal_layer, True, 'centerBottom')
                     self.gate_box_t = gate_cnt_box
+                    gates_t.append(gate_cnt_box)
             
             if typ == 'P' and not hv:
                 ihpAddThermalMosLayer(self, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end + cont_size /2 , ypoly_end+diffoffset), True, 'pmos')
@@ -433,12 +458,9 @@ class mos_base(DeviceBase):
             if onep(i) :
                 pinname = 'G'
                 try:
-                    if typ == 'P' and self.use_poly_pin:
+                    if self.use_poly_pin:
                         # pmos uses poly_layer for pin
                         # pmosHV uses poly_layer_pin for pin
-                        p_layer_pin = poly_layer_pin if hv else poly_layer
-                        MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), p_layer_pin)
-                    elif self.use_poly_pin:
                         MkPin(self, pinname, 2, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), poly_layer_pin)
                 except: pass ##print(f'Pinname {pinname} already exists')
 
@@ -451,6 +473,9 @@ class mos_base(DeviceBase):
             cnt_box = Box(xcont_beg-cont_metall_over, yMet1 + ratio_offset, xcont_end+cont_metall_over, yMet2 - ratio_offset)
             dbCreateRect(self, metall_layer, cnt_box)
             self.drain_box = cnt_box
+            if i%2 != 0:
+                drains.append(cnt_box)
+            else: sources.append(cnt_box)
             
             contactArray(self, 0, locint_layer, xcont_beg, ydiff_beg + ratio_offset, xcont_end, ydiff_end+diffoffset*2 - ratio_offset, 0, cont_Activ_overRec, cont_size, cont_dist)
             if self.s_d_mlayer != 'M1':
@@ -460,9 +485,7 @@ class mos_base(DeviceBase):
             if onep(i) :
                 pinname = 'D'
                 try:
-                    if typ == 'P':
-                        MkPin(self, pinname, 1, cnt_box, metall_layer if not hv else metall_layer_pin)
-                    else:
+                    if self.use_poly_pin:
                         MkPin(self, pinname, 1, cnt_box, metall_layer_pin)
                 except: pass ## print(f"Pinname {pinname} already exists")
 
@@ -511,11 +534,42 @@ class mos_base(DeviceBase):
                              Box(xdiff_beg - thGateOxAct, ydiff_beg - gatpoly_Activ_over - thGateOxGat,
                                  xdiff_end + thGateOxAct, ydiff_end + gatpoly_Activ_over + thGateOxGat))
         
+        ## Connecting Sources/Drains
+        if ng > 1:
+            if self.connect_diffusions:
+                top = self.gate_box_t.top if self.gate_box_t else self.gate_box.top
+                top += self.connection_spacing
+                s_left = sources[0].left
+                s_right = sources[-1].right
+                d_left = drains[0].left
+                d_right = drains[-1].right
+                sources_connection_box = Box(s_left, top, s_right, top+self.connection_width)
+                drains_connection_box = Box(d_left, top+self.connection_width+self.connection_spacing, d_right,top+2*self.connection_width+self.connection_spacing )
+                self.draw_rect(self.horizontal_layers[0], sources_connection_box, "Source")
+                self.draw_rect(self.horizontal_layers[0], drains_connection_box, "Drain")
+                for drain in drains:
+                    con_box = Box(drain.left, drain.bottom, drain.right, drains_connection_box.top)
+                    self.draw_rect(self.vertical_layers[0], con_box, "Drain")
+                    self.connectBoxes(con_box, drains_connection_box, self.horizontal_layers[0]._name, self.vertical_layers[0]._name)
+                for source in sources:
+                    con_box = Box(source.left, source.bottom, source.right, sources_connection_box.top)
+                    self.draw_rect(self.vertical_layers[0], con_box, "Source")
+                    self.connectBoxes(con_box, sources_connection_box, self.horizontal_layers[0]._name, self.vertical_layers[0]._name)
+            
+            if self.connect_gates:
+                con_layer = poly_layer if self.connect_gates_use_poly else self.horizontal_layers[0]
+                if gates_t:
+                    gate_con_box = Box(gates_t[0].left, gates_t[0].bottom, gates_t[-1].right, gates_t[-1].top)
+                    self.draw_rect(con_layer, gate_con_box, "Gate")
+                if gates_b:
+                    gate_con_box = Box(gates_b[0].left, gates_b[0].bottom, gates_b[-1].right, gates_b[-1].top)
+                    self.draw_rect(con_layer, gate_con_box, "Gate")
+        
         ## Placing dummies beside the generated device
         if self.dummies_count > 0:
             params = {
                 'l': self.dummies_l, #Updating the new device lenght into the dummy length
-                'w': self.w*1e-6,
+                'w': w*1e-6,
                 'ng': 1,
                 'gate_connection': 'T-B',
                 's_d_mlayer': 'M1',

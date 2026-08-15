@@ -97,7 +97,13 @@ class DeviceBase(DloGen):
                 self.cell_distance = Numeric(params['cell_distance'])*1e6
                 self.tap_rows = params['tap_rows']
                 self.tap_cells= params['tap_cells']
-    
+        self.odd_layers = []
+        self.even_layers = []
+        for i in range(1,4):
+            if i%2 == 0:
+                self.even_layers.append(Layer(f'Metal{i}'))
+            else:
+                self.odd_layers.append(Layer(f'Metal{i}'))
     
     def add_separation(self, specs, separator = 'Separator'):
         specs(f'_{separator}', f'----- {separator} -----','='*20, ReadOnlyConstraint())
@@ -149,6 +155,25 @@ class DeviceBase(DloGen):
         """
         return GuardRingType.cases()
 
+    def draw_rect(self, layer, box, label):
+        dbCreateRect(self, layer, box)
+        if label:
+            self.draw_label(layer, box, label)
+    
+    def draw_label(self,layer, box, text):
+        point = Point(box.getCenter().x, box.getCenter().y)
+        rotation = 'R90' if box.getHeight() > box.getWidth() else 'R0'
+        size = min(box.getHeight(), box.getWidth())/3
+        dbCreateLabel(self, layer, point, text, 'centerCenter', rotation, Font.EURO_STYLE, size)
+    
+    def connectBoxes(self, box1, box2, b_metal, t_metal):
+        intersection = Box(0,0,0,0)
+        intersection.box = box1.box & box2.box
+        self.genViaInBox(intersection, b_metal, t_metal)
+    
+    def genViaInBox(self, box, b_metal, t_metal):
+        return self.genVia(box.getWidth(), box.getHeight(), box.getCenter().x, box.getCenter().y, b_metal, t_metal, True)
+    
     def genVia(self, vn_columns, vn_rows, offset_x=0, offset_y=0, b_layer = 'GatPoly', t_layer = 'Metal1', use_width = False, origin='centerCenter'):
         back_sx = self.sx if hasattr(self, 'sx') else 0
         back_sy = self.sy if hasattr(self, 'sy') else 0
