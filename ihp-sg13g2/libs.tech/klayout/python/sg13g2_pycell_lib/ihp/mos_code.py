@@ -423,6 +423,7 @@ class mos_base(DeviceBase):
             self.gate_box = gate_box
             gates.append(gate_box)
             dbCreateRect(self, poly_layer, gate_box)
+            self.draw_label(text_layer, gate_box, self.model_type)
             ## Drow gate contacts
             if self.gate_connection != 'none':
                 metal_layer = self.gate_metal.replace('M', 'Metal').replace('T','Top')
@@ -451,9 +452,8 @@ class mos_base(DeviceBase):
             else:
                 ihpAddThermalMosLayer(self, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end, ypoly_end+diffoffset), True, Cell)
 
-            if i == 1 :
-                label_text = self.model_type
-                dbCreateLabel(self, text_layer, Point((xpoly_beg+xpoly_end)/2, (ypoly_beg+ypoly_end)/2+diffoffset), label_text, 'centerCenter', 'R90', Font.EURO_STYLE, 0.1)
+            #if i == 1 :
+            #dbCreateLabel(self, text_layer, Point((xpoly_beg+xpoly_end)/2, (ypoly_beg+ypoly_end)/2+diffoffset), label_text, 'centerCenter', 'R90', Font.EURO_STYLE, 0.1)
 
             if onep(i) :
                 pinname = 'G'

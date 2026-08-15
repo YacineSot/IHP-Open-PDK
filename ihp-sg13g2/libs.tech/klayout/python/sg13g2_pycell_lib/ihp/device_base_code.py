@@ -161,9 +161,9 @@ class DeviceBase(DloGen):
             self.draw_label(layer, box, label)
     
     def draw_label(self,layer, box, text):
-        point = Point(box.getCenter().x, box.getCenter().y)
+        point = box.getCenter()
         rotation = 'R90' if box.getHeight() > box.getWidth() else 'R0'
-        size = min(box.getHeight(), box.getWidth())/3
+        size = min(box.getHeight(), box.getWidth())/4
         dbCreateLabel(self, layer, point, text, 'centerCenter', rotation, Font.EURO_STYLE, size)
     
     def connectBoxes(self, box1, box2, b_metal, t_metal):
