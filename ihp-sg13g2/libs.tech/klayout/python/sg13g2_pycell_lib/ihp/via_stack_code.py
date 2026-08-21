@@ -198,6 +198,7 @@ class via_stack(DloGen):
         # Pre-calculate maximum box dimensions for the origin offset logic
         max_box_w = 0
         max_box_h = 0
+        max_box = Box(0,0,0,0)
         min_area = 0
         min_width = 0
         all_boxes = []
@@ -303,10 +304,13 @@ class via_stack(DloGen):
                     box_h = max(vn_total_height/2, box_h)
             box_w = GridFix(box_w)
             box_h = GridFix(box_h)
-            if box_w > max_box_w: max_box_w = box_w
-            if box_h > max_box_h: max_box_h = box_h
                 
             metal_box = Box(-box_w + offset_x, -box_h + offset_y, box_w + offset_x, box_h + offset_y)
+            if box_w > max_box_w:
+                max_box = metal_box
+
+            if box_w > max_box_w: max_box_w = box_w
+            if box_h > max_box_h: max_box_h = box_h
             all_boxes.append(metal_box)
             
             
@@ -351,4 +355,4 @@ class via_stack(DloGen):
         if shift_x or shift_y:
             for box in all_boxes:
                 box.moveBy(shift_x, shift_y)
-        return metal_box
+        return max_box

@@ -1,117 +1,7 @@
 from pya import DBox
+from .base_definitions import base_definitions
 
-
-class t_gate_base():
-    
-    def set_devices(self, model_type):
-        """
-        Template method for subclasses to overwrite
-        
-        You need to set the pmos, nmos classes for the t-gate
-        
-        self.pmos = my_pmos_class
-        self.nmos = my_nmos_class
-        
-        """
-        raise NotImplementedError()
-    
-    def gen_mos(self, w, l, ng, gate_connection, device_model, x, y, device_name=""):
-        """
-        Template method for subclasses to overwrite
-        
-        w: width of the device
-        l: length of the device
-        ng: number of fingers
-        gate_connection: gate connection position (T, B, T-B, none)
-        device_model: device_model class
-        x: x position of the device
-        y: y position of the device
-        device_name: name of the device (to display over the gate)
-        
-        return object: {gate: Box(), source_contact: Box(), drain_contact: Box(), gate_bottom_contact: Box(), gate_bottom_contact: Box()}
-        
-        """
-        raise NotImplementedError()
-
-    def get_mos_dimensions(self, w, l, ng, gate_connection, device_model):
-        """
-        Template method for subclasses to overwrite
-        
-        w: width of the device
-        l: length of the device
-        ng: number of fingers
-        gate_connection: gate connection position (T, B, T-B, none)
-        device_model: device_model class
-        
-        return (sx, sy) : size of the device (active | gate)
-        
-        """
-        raise NotImplementedError()
-    
-    def gen_tap(self, box, tap_type, tap_shape, tap_width ,tap_name=""):
-        """
-        Template method for subclasses to overwrite
-        
-        box: Box() object representing the tap's bounding box
-        tap_type: type of the tap (nwell, psub)
-        tap_shape: shape of the tap (here we define the inluding sides nsew (north, south, east, west))
-        tap_name: name of the tap (to display over the gate)
-        """
-        raise NotImplementedError()
-    
-    def draw_rect(self, box, layer, net_name=""):
-        """
-        Template method for subclasses to overwrite
-        
-        box: Box() object to draw
-        layer: layer of the rectangle (e.g. "M1", "M2", "Poly", etc.)
-        net_name: name of the net (to display over the rectangle)
-        
-        return object: Box()
-        
-        """
-        raise NotImplementedError()
-    
-    def draw_label(self, box, text, layer, size=0):
-        """
-        Template method for subclasses to overwrite
-        
-        box: Box() object to draw the label
-        text: text of the label
-        layer: layer of the label (e.g. "M1", "M2", "Poly", etc.)
-        
-        return object: Text()
-        
-        """
-        raise NotImplementedError()
-    
-    def connect_boxes(self, box1, box2, b_layer, t_layer):
-        """
-        Template method for subclasses to overwrite
-        
-        box1: Box() object to connect
-        box2: Box() object to connect
-        b_layer: bottom layer of the connection (e.g. "M1", "M2", "Poly", etc.)
-        t_layer: top layer of the connection (e.g. "M1", "M2", "Poly", etc.)
-        
-        return object: Box()
-        
-        """
-        raise NotImplementedError()
-    
-    def gen_via(self, box, b_layer, t_layer):
-        """
-        Template method for subclasses to overwrite
-        
-        box: Box() object to place the via
-        b_layer: bottom layer of the via (e.g. "M1", "M2", "Poly", etc.)
-        t_layer: top layer of the via (e.g. "M1", "M2", "Poly", etc.)
-        
-        return object: Box()
-        
-        """
-        raise NotImplementedError()
-    
+class t_gate_base(base_definitions):
     
     def gen_t_gate(self):
         
@@ -176,50 +66,50 @@ class t_gate_base():
         
         # Place Vertical Connections
         en_connection_box = DBox (0, -self.tap_width, self.connection_metal_width, total_height)
-        self.draw_rect(en_connection_box, "M3", "EN")
+        self.draw_rect(en_connection_box, self.vertical_layers[1], "EN")
         in_connection_box = DBox (total_width - self.connection_metal_width - self.connection_metal_spacing, -self.tap_width, total_width - self.connection_metal_width - self.connection_metal_spacing - self.connection_metal_width, total_height)
-        self.draw_rect(in_connection_box, "M3", "IN")
+        self.draw_rect(in_connection_box, self.vertical_layers[1], "IN")
         out_connection_box = DBox (total_width - self.connection_metal_width, -self.tap_width, total_width , total_height)
-        self.draw_rect(out_connection_box, "M3", "OUT")
+        self.draw_rect(out_connection_box, self.vertical_layers[1], "OUT")
 
         # Connect the inverter fet gates and drains:
         gate_connection_box = DBox(inv_pmos['gate'].left - self.Mn_min_distance, inv_nmos['gate'].top, inv_nmos['gate'].right, inv_pmos['gate'].bottom)
-        self.draw_rect(gate_connection_box, "GatPoly", "EN")
+        self.draw_rect(gate_connection_box, self.poly_layer, "EN")
         drain_connection_box = DBox(inv_pmos['drain_contact'].right, inv_nmos['drain_contact'].bottom, inv_nmos['drain_contact'].right + self.inner_connection_width, inv_pmos['drain_contact'].top)
-        self.draw_rect(drain_connection_box, "M1", "EN_N")
+        self.draw_rect(drain_connection_box, self.vertical_layers[0], "EN_N")
         en_connection_inv_box = DBox(en_connection_box.left, gate_connection_box.bottom, gate_connection_box.right - self.Mn_min_distance, gate_connection_box.top)
-        self.draw_rect(en_connection_inv_box, 'M2', 'EN')
+        self.draw_rect(en_connection_inv_box, self.horizontal_layers[0], 'EN')
         # Connect the t-gate with enable signal
         en_connection_t_gate_box = DBox(en_connection_box.left, t_gate_nmos['gate_bottom_contact'].bottom, t_gate_nmos['gate_bottom_contact'].right, t_gate_nmos['gate_bottom_contact'].top)
-        self.draw_rect(en_connection_t_gate_box, "M2", "EN")
+        self.draw_rect(en_connection_t_gate_box, self.horizontal_layers[0], "EN")
         
         ## Connect t-gate pmos gate with inverter output:
-        inv_gate_connection_box = DBox(t_gate_pmos_gt_connection.left, t_gate_pmos_gt_connection.bottom, drain_connection_box.left, t_gate_pmos_gt_connection.top)
-        self.draw_rect(inv_gate_connection_box, "M2", "EN_N")
+        inv_gate_connection_box = DBox(t_gate_pmos_gt_connection.right, t_gate_pmos_gt_connection.bottom, drain_connection_box.left, t_gate_pmos_gt_connection.top)
+        self.draw_rect(inv_gate_connection_box, self.horizontal_layers[0], "EN_N")
         
-        self.connect_boxes(inv_gate_connection_box, drain_connection_box, 'M1', 'M2')
+        self.connect_boxes(inv_gate_connection_box, drain_connection_box, self.vertical_layers[0], self.horizontal_layers[0])
         
-        self.connect_boxes(en_connection_inv_box, gate_connection_box, "GatPoly", "M2")
-        self.connect_boxes(en_connection_inv_box, en_connection_box, "M2", "M3")
-        self.connect_boxes(en_connection_t_gate_box, en_connection_box, "M2", "M3")
+        self.connect_boxes(en_connection_inv_box, gate_connection_box, self.poly_layer, self.horizontal_layers[0])
+        self.connect_boxes(en_connection_inv_box, en_connection_box, self.horizontal_layers[0], self.vertical_layers[1])
+        self.connect_boxes(en_connection_t_gate_box, en_connection_box, self.horizontal_layers[0], self.vertical_layers[1])
         
         
         # Connect the t-gate drains and sources
         in_drain_connection_box = DBox(t_gate_nmos['drain_contact'].right, t_gate_nmos['drain_contact'].bottom, t_gate_pmos['drain_contact'].right + self.inner_connection_width, t_gate_pmos['drain_contact'].top)
-        self.draw_rect(in_drain_connection_box, "M1", "IN")
+        self.draw_rect(in_drain_connection_box, self.vertical_layers[0], "IN")
         out_source_connection_box = DBox(t_gate_nmos['source_contact'].left, t_gate_nmos['source_contact'].bottom, t_gate_pmos['source_contact'].left - self.inner_connection_width, t_gate_pmos['source_contact'].top)
-        self.draw_rect(out_source_connection_box, "M1", "OUT")
+        self.draw_rect(out_source_connection_box, self.vertical_layers[0], "OUT")
         
         # Connect the IN OUT signals
         connection_drain_in_box = DBox(t_gate_nmos['drain_contact'].left, t_gate_nmos['drain_contact'].bottom, in_connection_box.right, t_gate_nmos['drain_contact'].top)
-        self.draw_rect(connection_drain_in_box, "M2", "IN")
+        self.draw_rect(connection_drain_in_box, self.horizontal_layers[0], "IN")
         connection_source_out_box = DBox(t_gate_pmos['source_contact'].left, t_gate_pmos['source_contact'].bottom, out_connection_box.right, t_gate_pmos['source_contact'].top)
-        self.draw_rect(connection_source_out_box, "M2", "OUT")
+        self.draw_rect(connection_source_out_box, self.horizontal_layers[0], "OUT")
         
-        self.connect_boxes(t_gate_nmos['drain_contact'], connection_drain_in_box, "M1", "M2")
-        self.connect_boxes(connection_drain_in_box, in_connection_box, "M2", "M3")
-        self.connect_boxes(out_connection_box, connection_source_out_box, "M3", "M2")
-        self.connect_boxes(connection_source_out_box, t_gate_pmos['source_contact'], "M1", "M2")
+        self.connect_boxes(t_gate_nmos['drain_contact'], connection_drain_in_box, self.vertical_layers[0], self.horizontal_layers[0])
+        self.connect_boxes(connection_drain_in_box, in_connection_box, self.horizontal_layers[0], self.vertical_layers[1])
+        self.connect_boxes(out_connection_box, connection_source_out_box, self.vertical_layers[1], self.horizontal_layers[0])
+        self.connect_boxes(connection_source_out_box, t_gate_pmos['source_contact'], self.vertical_layers[0], self.horizontal_layers[0])
         
         # Draw taps
         # Draw nwell tap
@@ -231,7 +121,7 @@ class t_gate_base():
 
         # Connect the inverter sources:
         inverter_pmos_connection_box = DBox(inv_pmos['source_contact'].left,inv_pmos['source_contact'].bottom, inv_pmos['source_contact'].left - self.inner_connection_width, well_tap_bounding_box.top)
-        self.draw_rect(inverter_pmos_connection_box, 'M1', 'VDD')        
+        self.draw_rect(inverter_pmos_connection_box, self.vertical_layers[0], 'VDD')        
         
         inverter_pmos_connection_box = DBox(inv_nmos['source_contact'].left,sub_tap_bounding_box.bottom, inv_nmos['source_contact'].left - self.inner_connection_width, inv_nmos['source_contact'].top)
-        self.draw_rect(inverter_pmos_connection_box, 'M1', 'VSS')        
+        self.draw_rect(inverter_pmos_connection_box, self.vertical_layers[0], 'VSS')        

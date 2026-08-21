@@ -70,11 +70,13 @@ class mos_base(DeviceBase):
         specs('l' ,   defL, 'Length')
         specs('gate_cnt_ratio', 100, 'Gate Length contact ratio %', RangeConstraint(1, 100))
         specs('ng',   defNG, 'Number of Gates')
-        specs('split_width', True, 'Split the width over the number of gate', BooleanConstraint())
+        specs('split_width', True, 'Split the width over the number of gates', BooleanConstraint())
+        cls.add_separation(cls, specs, 'Device connections')
         specs('connect_diffusions', True, 'Auto connect S/D diffusions', BooleanConstraint())
         specs('connect_gates', True, 'Auto connect gates', BooleanConstraint())
         specs('connect_gates_use_poly', True, 'Connect gates using poly', BooleanConstraint())
-        specs('connection_width', f'{Mn_size}u', 'Connection Width')
+        specs('horizontal_connection_width', f'{Mn_size}u', 'Horizontal Connection Width')
+        specs('vertical_connection_width', f'{Mn_size}u', 'Vertical Connection Width')
         specs('connection_spacing', f'{Mn_space}u', 'Connection Spacing')
         specs('odd_vertical', True, 'Vertical metals odd', BooleanConstraint())
 
@@ -120,7 +122,8 @@ class mos_base(DeviceBase):
         self.ng = int(params['ng'])
         self.split_width = params['split_width'] if 'split_width' in params else False
         self.connect_diffusions = params['connect_diffusions'] if 'connect_diffusions' in params else False
-        self.connection_width = Numeric(params['connection_width'])*1e6 if 'connection_width' in params else 0.21
+        self.horizontal_connection_width = Numeric(params['horizontal_connection_width'])*1e6 if 'horizontal_connection_width' in params else 0.21
+        self.vertical_connection_width = Numeric(params['vertical_connection_width'])*1e6 if 'vertical_connection_width' in params else 0.21
         self.connection_spacing = Numeric(params['connection_spacing'])*1e6 if 'connection_spacing' in params else 0.24
         self.connect_gates = params['connect_gates'] if 'connect_gates' in params else False
         self.connect_gates_use_poly = params['connect_gates_use_poly'] if 'connect_gates_use_poly' in params else False
@@ -539,25 +542,25 @@ class mos_base(DeviceBase):
             if self.connect_diffusions:
                 top = self.gate_box_t.top if self.gate_box_t else self.gate_box.top
                 top += self.connection_spacing
-                s_left = sources[0].getCenter().x - self.connection_width/2
-                s_right = sources[-1].getCenter().x + self.connection_width/2
-                d_left = drains[0].getCenter().x - self.connection_width/2
-                d_right = drains[-1].getCenter().x + self.connection_width/2
-                sources_connection_box = Box(s_left, top, s_right, top+self.connection_width)
-                drains_connection_box = Box(d_left, top+self.connection_width+self.connection_spacing, d_right,top+2*self.connection_width+self.connection_spacing )
+                s_left = sources[0].getCenter().x - self.vertical_connection_width/2
+                s_right = sources[-1].getCenter().x + self.vertical_connection_width/2
+                d_left = drains[0].getCenter().x - self.vertical_connection_width/2
+                d_right = drains[-1].getCenter().x + self.vertical_connection_width/2
+                sources_connection_box = Box(s_left, top, s_right, top+self.horizontal_connection_width)
+                drains_connection_box = Box(d_left, top+self.horizontal_connection_width+self.connection_spacing, d_right,top+2*self.horizontal_connection_width+self.connection_spacing )
                 self.draw_rect(self.horizontal_layers[0], sources_connection_box, "Source")
                 self.draw_rect(self.horizontal_layers[0], drains_connection_box, "Drain")
                 for drain in drains:
                     drain_center = drain.getCenter().x
-                    left = drain_center - self.connection_width/2
-                    right = drain_center + self.connection_width/2
+                    left = drain_center - self.vertical_connection_width/2
+                    right = drain_center + self.vertical_connection_width/2
                     con_box = Box(left, drain.bottom, right, drains_connection_box.top)
                     self.draw_rect(self.vertical_layers[0], con_box, "Drain")
                     self.connectBoxes(con_box, drains_connection_box, self.horizontal_layers[0]._name, self.vertical_layers[0]._name)
                 for source in sources:
                     source_center = source.getCenter().x
-                    left = source_center - self.connection_width/2
-                    right = source_center + self.connection_width/2
+                    left = source_center - self.vertical_connection_width/2
+                    right = source_center + self.vertical_connection_width/2
                     con_box = Box(left, source.bottom, right, sources_connection_box.top)
                     self.draw_rect(self.vertical_layers[0], con_box, "Source")
                     self.connectBoxes(con_box, sources_connection_box, self.horizontal_layers[0]._name, self.vertical_layers[0]._name)
@@ -577,7 +580,7 @@ class mos_base(DeviceBase):
                 'l': self.dummies_l, #Updating the new device lenght into the dummy length
                 'w': w*1e-6,
                 'ng': 1,
-                'gate_connection': 'T-B',
+                'gate_connection': 'none',
                 's_d_mlayer': 'M1',
                 'gate_metal': 'M1',
                 'cnt_w_ratio': self.cnt_w_ratio*100,
@@ -593,14 +596,55 @@ class mos_base(DeviceBase):
                 )
             if self.dummies_left:
                 left_spacing = self.dummy_core_spacing if not self.overlap_left else -0.3
+                gates = []
                 for i in range(self.dummies_count):
                     x_pos = diff_box.left - left_spacing - i*(self.dummies_inner_spacing) - (i+1)*width
-                    self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+                    dummy_device = self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+                    gates.append(dummy_device.gate_box)
+                min_left = min(gates, key = lambda r: r.left).left
+                max_right = max(gates, key = lambda r: r.right).right
+                top = gates[0].top
+                bottom = gates[0].bottom
+                if self.gate_box_t:
+                    connection_box = Box(min_left, top, max_right, self.gate_box_t.top)
+                    self.draw_rect(poly_layer, connection_box)
+                    gate_ratio = connection_box.getWidth()*0.1
+                    gate_offset = gatpoly_cont_dist if connection_box.getWidth()*0.9 < cont_size + gatpoly_Activ_over + cont_Activ_overRec else 0
+                    via_box = Box(connection_box.left + gate_ratio - gate_offset, connection_box.bottom, connection_box.right - gate_ratio - gate_offset, connection_box.top)
+                    self.genViaInBox(via_box, "GatPoly", "Metal1")
+                if self.gate_box_b:
+                    connection_box = Box(min_left, bottom, max_right, self.gate_box_b.bottom)
+                    self.draw_rect(poly_layer, connection_box)
+                    gate_ratio = connection_box.getWidth()*0.1
+                    gate_offset = gatpoly_cont_dist if connection_box.getWidth()*0.9 < cont_size + gatpoly_Activ_over + cont_Activ_overRec else 0
+                    via_box = Box(connection_box.left + gate_ratio - gate_offset, connection_box.bottom, connection_box.right - gate_ratio - gate_offset, connection_box.top)
+                    self.genViaInBox(via_box, "GatPoly", "Metal1")
+                    
             if self.dummies_right:
                 right_spacing = self.dummy_core_spacing if not self.overlap_right else -0.3
+                gates = []
                 for i in range(self.dummies_count):
                     x_pos = diff_box.right + i*(self.dummies_inner_spacing) + (i)*width  + right_spacing
-                    self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+                    dummy_device = self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+                    gates.append(dummy_device.gate_box)
+                min_left = min(gates, key = lambda r: r.left).left
+                max_right = max(gates, key = lambda r: r.right).right
+                top = gates[0].top
+                bottom = gates[0].bottom
+                if self.gate_box_t:
+                    connection_box = Box(min_left, top, max_right, self.gate_box_t.top)
+                    self.draw_rect(poly_layer, connection_box)
+                    gate_ratio = connection_box.getWidth()*0.1
+                    gate_offset = gatpoly_cont_dist if connection_box.getWidth()*0.9 < cont_size + gatpoly_Activ_over + cont_Activ_overRec else 0
+                    via_box = Box(connection_box.left + gate_ratio + gate_offset, connection_box.bottom, connection_box.right - gate_ratio + gate_offset, connection_box.top)
+                    self.genViaInBox(via_box, "GatPoly", "Metal1")
+                if self.gate_box_b:
+                    connection_box = Box(min_left, bottom, max_right, self.gate_box_b.bottom)
+                    self.draw_rect(poly_layer, connection_box)
+                    gate_ratio = connection_box.getWidth()*0.1
+                    gate_offset = gatpoly_cont_dist if connection_box.getWidth()*0.9 < cont_size + gatpoly_Activ_over + cont_Activ_overRec else 0
+                    via_box = Box(connection_box.left + gate_ratio + gate_offset, connection_box.bottom, connection_box.right - gate_ratio + gate_offset, connection_box.top)
+                    self.genViaInBox(via_box, "GatPoly", "Metal1")
                         
         
         return self._getCurrentCellContext()

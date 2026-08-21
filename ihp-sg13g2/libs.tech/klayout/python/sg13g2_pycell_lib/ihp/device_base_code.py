@@ -155,7 +155,7 @@ class DeviceBase(DloGen):
         """
         return GuardRingType.cases()
 
-    def draw_rect(self, layer, box, label):
+    def draw_rect(self, layer, box, label = ""):
         dbCreateRect(self, layer, box)
         if label:
             self.draw_label(layer, box, label)
