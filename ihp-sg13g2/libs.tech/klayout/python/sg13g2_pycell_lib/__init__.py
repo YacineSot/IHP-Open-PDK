@@ -22,6 +22,7 @@ from cni.dlo import PCellWrapper
 # Creates the SG13_dev technology
 from .sg13_tech import *
 from .sg13_tech_info import *
+from .native_pcells.via_pcell import ViaPCell
 
 from pypreprocessor.pypreprocessor import preprocessor as preProcessor
 
@@ -35,6 +36,7 @@ import re
 import importlib
 import importlib.util
 import pathlib
+import shutil
 import tempfile
 import traceback
 
@@ -60,6 +62,8 @@ moduleNames = [
         'rfpmosHV_code',
         'NoFillerStack_code',
         'SVaricap_code',
+        'moscap_n_code',
+        'moscap_p_code',
         'pnpMPA_code',
         'isolbox_code',
         'schottky_code'
@@ -167,8 +171,21 @@ if the environment variable 'IHP_PYCELL_LIB_PRINT_DEFINES_SET' is set.
 class PyCellLib(pya.Library):
     def __init__(self, lib_name = 'SG13_dev', moduleNames = moduleNames):
         self.description = "IHP SG13G2 Pcells"
-        self.technology = 'sg13g2'
+        self.technology = SG13_Tech.TECH_NAME
 
+        # Modules using '#ifdef' are preprocessed into this directory before
+        # they are imported. mkdtemp() hands every process its own directory,
+        # so concurrent KLayout sessions cannot overwrite or delete each
+        # other's files. That also covers the case of a second IHP PDK being
+        # loaded, which ships the very same module names.
+        preProcDir = tempfile.mkdtemp(prefix='sg13g2_pycell_')
+
+        try:
+            self.registerPCells(preProcDir)
+        finally:
+            shutil.rmtree(preProcDir, ignore_errors=True)
+
+    def registerPCells(self, preProcDir):
         tech = Tech.get('SG13_dev')
 
         processNames = []
@@ -228,7 +245,7 @@ class PyCellLib(pya.Library):
             modulePreProcPath = None
 
             if len(defines) > 0:
-                modulePreProcPath = os.path.join(tempfile.gettempdir(), f"{moduleName}_pre.py")
+                modulePreProcPath = os.path.join(preProcDir, f"{moduleName}_pre.py")
 
                 pyPreProcessor = preProcessor(modulePath, modulePreProcPath, definesSet, removeMeta=False, resume=True, run=False)
                 pyPreProcessor.parse()
@@ -245,8 +262,6 @@ class PyCellLib(pya.Library):
                         print(line.replace(modulePreProcPath, modulePath))
 
                     sys.exit(1)
-
-                os.remove(modulePreProcPath)
             else:
                 module = importlib.import_module(f"{__name__}.ihp." + moduleName)
 

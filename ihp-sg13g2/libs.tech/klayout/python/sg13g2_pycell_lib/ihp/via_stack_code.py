@@ -26,9 +26,10 @@ from .utility_functions import *
 import math
 
 class via_stack(DloGen):
-
     @classmethod
     def defineParamSpecs(self, specs):
+        self.tech_info = TechInfoFactory.tech_info_for_tech(specs.tech)
+        
         # define parameters and default values
         techparams = specs.tech.getTechParams()
         
