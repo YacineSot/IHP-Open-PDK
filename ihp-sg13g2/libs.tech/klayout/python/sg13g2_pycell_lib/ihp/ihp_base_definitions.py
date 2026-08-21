@@ -11,8 +11,8 @@ from .via_stack_code import via_stack
 
 class ihp_base_definitions(base_definitions):
     def additionnal_specs(self, specs):
-        specs("start_level", "1", "First connection metal", ChoiceConstraint(["1", "2"]))
-        specs("odd_vertical", True, "Vertical Metal ODD", BooleanConstraint())
+        specs("start_level", 1, "First connection metal", ChoiceConstraint([1,2]))
+        specs("odd_vertical", True, "Vertical Metal ODD")
     
     def additionnal_params(self, params):
         self.start_level = int(params["start_level"])

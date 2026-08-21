@@ -56,27 +56,19 @@ class DeviceBase(DloGen):
         choices = [c.value for c in cls.validGuardRingTypes()]
         
         cls.default_ring = cls.default_ring if hasattr(cls, 'default_ring') else 'none'
-        cls.default_distance = cls.default_distance if hasattr(cls, 'default_distance') else '0.8u'
+        cls.default_distance = cls.default_distance if hasattr(cls, 'default_distance') else '0.5u'
         
-        cls.add_separation(cls, specs, "Guard Ring Settings")
+        cls.add_separation(self = cls, specs = specs,separator= "Guard Ring Settings")
         specs('guardRingType', cls.default_ring, 'Guard Ring Type', ChoiceConstraint(choices))
         specs('guardRingDistance', cls.default_distance, 'Guard Ring Distance')
         specs('guardRingWidth', '0.3u', 'Guard Ring Width')
-        specs('distribute_contacts', False, 'Contacts Follows Active', BooleanConstraint())
-        cls.add_separation(self=cls, specs=specs, separator="")
-        specs('north', def_tap['north'], 'Include North Side', BooleanConstraint())
-        specs('south', def_tap['south'], 'Include South Side', BooleanConstraint())
-        specs('west', def_tap['west'], 'Include West Side', BooleanConstraint())
-        specs('east', def_tap['east'], 'Include East Side', BooleanConstraint())
-        #specs('guardRingArray', False, 'Array Ring',ChoiceConstraint([True, False]))
-        cls.add_separation(self=cls, specs=specs, separator="")
-        if hasattr(cls, 'is_array') and cls.is_array:
-            specs('rows', 1, 'Number of rows')
-            specs('row_distance', '0u', 'Distance between rows')
-            specs('tap_rows', True, 'Tap Between Rows', BooleanConstraint())
-            specs('cells', 1, 'Number of cells')
-            specs('cell_distance', '0u', 'Distance between cells')
-            specs('tap_cells', True, 'Tap Between Cells', BooleanConstraint())
+        specs('distribute_contacts', False, 'Contacts Follows Active')
+        cls.add_separation(self=cls, specs=specs, separator=" ")
+        specs('north', def_tap['north'], 'Include North Side')
+        specs('south', def_tap['south'], 'Include South Side')
+        specs('west', def_tap['west'], 'Include West Side')
+        specs('east', def_tap['east'], 'Include East Side')
+
 
     def setupParams(self, params):
         # process parameter values entered by user
@@ -90,13 +82,13 @@ class DeviceBase(DloGen):
             self.guardRingWidth = Numeric(params['guardRingWidth'])*1e6
             self.distribute_contacts = params['distribute_contacts'] if 'distribute_contacts' in params else False
         #self.guardRingArray = params['guardRingArray'] == 'yes'
-            if hasattr(self, 'is_array') and self.is_array:
-                self.cells = int(params['cells'])
-                self.rows = int(params['rows'])
-                self.row_distance = Numeric(params['row_distance'])*1e6
-                self.cell_distance = Numeric(params['cell_distance'])*1e6
-                self.tap_rows = params['tap_rows']
-                self.tap_cells= params['tap_cells']
+            # if hasattr(self, 'is_array') and self.is_array:
+            #     self.cells = int(params['cells'])
+            #     self.rows = int(params['rows'])
+            #     self.row_distance = Numeric(params['row_distance'])*1e6
+            #     self.cell_distance = Numeric(params['cell_distance'])*1e6
+            #     self.tap_rows = params['tap_rows']
+            #     self.tap_cells= params['tap_cells']
         self.odd_layers = []
         self.even_layers = []
         for i in range(1,4):
@@ -106,7 +98,9 @@ class DeviceBase(DloGen):
                 self.odd_layers.append(Layer(f'Metal{i}'))
     
     def add_separation(self, specs, separator = 'Separator'):
-        specs(f'_{separator}', f'----- {separator} -----','='*20, ReadOnlyConstraint())
+        count = len(specs.get_parameters())
+        specs(f'_{self.fix_only_chars_string(separator)}{count}', f'----- {separator} -----','='*20, ReadOnlyConstraint())
+        pass
     
     def instanciate_self(self, params, position):
         """
@@ -122,6 +116,11 @@ class DeviceBase(DloGen):
         device.sy = position.y
         device.genDeviceLayout()
         return device
+    
+    @staticmethod
+    def fix_only_chars_string(string):
+        return ''.join([char for char in string if char.isalpha()])
+    
     
     @staticmethod
     def fix_params_micro_unit(params, keys):

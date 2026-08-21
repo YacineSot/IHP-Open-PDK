@@ -287,12 +287,12 @@ class guard_ring(DloGen):
         specs('w', '3.05u', 'Box Width')
         specs('h', '3.05u', 'Box Height')
         specs('t', '0.3u', 'Tap Width')
-        specs('distribute_contacts', False, 'Contacts Follows Active', BooleanConstraint())
+        specs('distribute_contacts', False, 'Contacts Follows Active')
         specs('_', '-----Separator-----', '-------------', ReadOnlyConstraint())
-        specs('north', True, 'Include North Side',BooleanConstraint())
-        specs('south', True, 'Include South Side',BooleanConstraint())
-        specs('west', True, 'Include West Side',BooleanConstraint())
-        specs('east', True, 'Include East Side',BooleanConstraint())
+        specs('north', True, 'Include North Side')
+        specs('south', True, 'Include South Side')
+        specs('west', True, 'Include West Side')
+        specs('east', True, 'Include East Side')
 
     def setupParams(self, params):
         # process parameter values entered by user

@@ -74,7 +74,7 @@ class ResistorBase(DeviceBase):
         
         ## ----------------------------
         
-        specs('UseContBar', True, 'Use Contact Bar', BooleanConstraint())
+        specs('UseContBar', True, 'Use Contact Bar')
         specs("ConnectionsMetal", 'M2', 'Connections metal' ,ChoiceConstraint(['M1', 'M2', 'M3', 'M4', 'TM1']))
         specs('NumberOfSegments', 1, 'Number of Segments')
         specs('SegmentConnection', 'Serial', 'Segment Connection', ChoiceConstraint(['None', 'Serial', 'Parallel']))

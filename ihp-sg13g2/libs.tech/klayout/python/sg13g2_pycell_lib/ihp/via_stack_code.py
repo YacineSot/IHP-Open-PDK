@@ -23,6 +23,8 @@ from .geometry import *
 from .thermal import *
 from .utility_functions import *
 
+from ..sg13_tech_info import *
+
 import math
 
 class via_stack(DloGen):
@@ -44,9 +46,9 @@ class via_stack(DloGen):
         specs('t_layer', 'Metal2', 'Top layer', ChoiceConstraint(['Metal1', 'Metal2', 'Metal3', 'Metal4', 'Metal5', 'TopMetal1', 'TopMetal2']))
         specs('vn_columns', 2, 'Via_n Columns')
         specs('vn_rows', 2, 'Via_n Rows')
-        specs('extra_vias', False, 'Add extra vias', BooleanConstraint())
+        specs('extra_vias', False, 'Add extra vias')
         ## UPDATE: Option to choose between row/col count vs width/hight for via array size
-        specs('use_array_size', False, 'Via count based on array size', BooleanConstraint())
+        specs('use_array_size', False, 'Via count based on array size')
         specs('vn_total_width',  '0.7u', 'Via array total width')
         specs('vn_total_height', '0.62u', 'Via array total height')
 

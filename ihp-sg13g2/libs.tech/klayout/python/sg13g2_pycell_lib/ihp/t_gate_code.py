@@ -49,7 +49,7 @@ class t_gate(DloGen, t_gate_base, ihp_base_definitions):
         specs('ng', '1', 'Number of fingers')
         specs('pmos_gate_ratio', '0.6', 'PMOS to NMOS T-Gate Width ratio NMOS/PMOS')
         specs('pmos_inv_ratio', '0.6', 'PMOS to NMOS Inverter Width ratio NMOS/PMOS')
-        specs('high_voltage', False, 'High Voltage devices ?', BooleanConstraint())
+        specs('high_voltage', False, 'High Voltage devices ?')
         specs('vertical_spacing', '1u', 'Vertical spacing')
         specs('horizontal_spacing', '0.5u', 'Horizontal spacing')
         specs('tap_spacing', '0.5u', 'Tap spacing')

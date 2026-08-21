@@ -42,6 +42,8 @@ import traceback
 
 moduleNames = [
         'cmim_code',
+        'cmomf_code',
+        'cmomi_code',
         'sealring_code',
         'npn13G2_code',
         'npn13G2L_code',
@@ -181,11 +183,11 @@ class PyCellLib(pya.Library):
         preProcDir = tempfile.mkdtemp(prefix='sg13g2_pycell_')
 
         try:
-            self.registerPCells(preProcDir)
+            self.registerPCells(preProcDir, lib_name, moduleNames)
         finally:
             shutil.rmtree(preProcDir, ignore_errors=True)
 
-    def registerPCells(self, preProcDir):
+    def registerPCells(self, preProcDir, lib_name, moduleNames):
         tech = Tech.get('SG13_dev')
 
         processNames = []

@@ -72,8 +72,8 @@ class mirror(DeviceBase):
         specs('dummy_l', '0.5u', 'Dummy length')
         specs('dummies_offset', '0.2u', 'Distance between core and dummy')
         specs('dummies_distance', '0.2u', 'Distance between dummies')
-        specs('overlap_dummies_diffusions', True, 'Overlap Dummies S/D diffusions', BooleanConstraint())
-        specs('place_taps', False, 'Place taps between devices', BooleanConstraint())
+        specs('overlap_dummies_diffusions', True, 'Overlap Dummies S/D diffusions')
+        specs('place_taps', False, 'Place taps between devices')
         
         cls.default_ring = 'auto'
         super().defineParamSpecs(specs)
