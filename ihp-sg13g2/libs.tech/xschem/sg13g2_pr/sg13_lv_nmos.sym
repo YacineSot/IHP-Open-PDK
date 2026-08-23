@@ -25,6 +25,7 @@ ng=1
 m=1
 mm_ok=1
 model=sg13_lv_nmos
+annot_side=0
 spiceprefix=X
 "
 drc="fet_drc @name @symname @model @w @l @ng"
@@ -56,3 +57,7 @@ T {w=@w} 31.25 -26.25 0 0 0.2 0.2 { layer=13}
 T {S} 22.5 17.5 0 0 0.15 0.15 {layer=7}
 T {D} 22.5 -17.5 2 1 0.15 0.15 {layer=7}
 T {B} 20 -10 0 0 0.15 0.15 {layer=7}
+T {tcleval([if \{@annot_side == "2"\} \{ display_fet_params @name \} else ""])} 85 -25 0 0 0.2 0.2 {layer=15
+font=Monospace}
+T {tcleval([if \{@annot_side == "1"\} \{ display_fet_params @name \} else ""])} -155 -25 0 0 0.2 0.2 {layer=15
+font=Monospace}
