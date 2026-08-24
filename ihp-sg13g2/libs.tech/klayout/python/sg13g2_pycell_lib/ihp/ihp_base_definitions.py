@@ -7,6 +7,7 @@ from .nmosHV_code import nmosHV
 from .geometry import *
 from .guard_ring_code import generate_guard_ring
 from .via_stack_code import via_stack
+from .utility_functions import GridFix
 
 
 class ihp_base_definitions(base_definitions):
@@ -51,7 +52,10 @@ class ihp_base_definitions(base_definitions):
                 else:
                     self.vertical_layers.append(layer)
     
-    def gen_mos(self, w, l, ng, gate_connection, device_model, x, y, device_name=""):
+    def gen_mos(self, w, l, ng, gate_connection, device_model, x, y, device_name="", connection_params={
+        's_d_mlayer': "M1", 
+        'gate_metal': "M2"
+    }):
         """
         Template method for subclasses to overwrite
         
@@ -70,17 +74,17 @@ class ihp_base_definitions(base_definitions):
         device = device_model()
         params = {'w': w, 
                     'l': l, 
-                    'ng': 1, 
-                    's_d_mlayer': "M1", 
+                    'ng': ng, 
                     'gate_connection': gate_connection,
-                    'gate_metal': "M2", 
                     'cnt_w_ratio': 80,
                     'gate_cnt_ratio': 100,
                     'guardRingType': 'none',
                     'guardRingDistance': 0.5,
-                }
+                } | connection_params
         device.tech = self.tech
         device._getCurrentCellContext = self._getCurrentCellContext
+        if device_name:
+            device.label = device_name
         device.sx = x
         device.sy = y
         device.setupParams(params)
@@ -90,13 +94,14 @@ class ihp_base_definitions(base_definitions):
             'source_contact': device.source_box.box,
             'drain_contact': device.drain_box.box,
             'gate_top_contact': device.gate_box_t.box if hasattr(device, 'gate_box_t') else None,
-            'gate_bottom_contact': device.gate_box_b.box if hasattr(device, 'gate_box_b') else None
+            'gate_bottom_contact': device.gate_box_b.box if hasattr(device, 'gate_box_b') else None,
+            'active_box': device.active_box.box
         }
-        if device_name:
-            self.draw_label(device.gate_box.box, device_name, Layer("TEXT"))
+        # if device_name:
+        #     self.draw_label(device.gate_box.box, device_name, Layer("TEXT"))
         return contacts
 
-    def get_mos_dimensions(self, w, l, ng, gate_connection, device_model):
+    def get_mos_dimensions(self, w, l, ng, gate_connection, device_model, connection_params={}):
         """
         Template method for subclasses to overwrite
         
@@ -109,9 +114,14 @@ class ihp_base_definitions(base_definitions):
         return (sx, sy) : size of the device (active | gate)
         
         """
-        dimensions = device_model.get_dimensions(w*1e6, l*1e6, ng, self.techparams, gate_connection)
+        dimensions = device_model.get_dimensions(w*1e6, l*1e6, ng, self.techparams, gate_connection, connection_params = connection_params)
         return {'Width': dimensions[0], 'Height': dimensions[1]}
     
+    def fix_grid(self, size):
+        """
+        Fix Snap to grid
+        """
+        return GridFix(size)
     
     def draw_rect(self, box, layer, net_name=""):
         """

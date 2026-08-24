@@ -148,7 +148,7 @@ class mos_base(DeviceBase):
         return cls.allowed_guard_ring_types
 
     @staticmethod
-    def get_dimensions(w, l, ng, techparams, gate_connection='T-B', dummies_params={'count': 0}):
+    def get_dimensions(w, l, ng, techparams, gate_connection='T-B', dummies_params={'count': 0}, connection_params={}):
         """
         Returns the (width, height) of the device.
         width: from the beginning to the end of the Activ (diffusion) horizontally.
@@ -205,6 +205,8 @@ class mos_base(DeviceBase):
                 width += additional_width
             if dummies_params['right']:
                 width += additional_width
+        if connection_params:
+            height += connection_params['horizontal_connection_width']*2 + connection_params['connection_spacing']*2
         print(f'device dimensions: (width, height): ({width}, {height})')
         return width, height
 
@@ -416,7 +418,7 @@ class mos_base(DeviceBase):
             self.gate_box = gate_box
             gates.append(gate_box)
             dbCreateRect(self, poly_layer, gate_box)
-            self.draw_label(text_layer, gate_box, self.model_type)
+            self.draw_label(text_layer, gate_box, self.model_type if not hasattr(self, 'label') else self.label)
             ## Drow gate contacts
             if self.gate_connection != 'none':
                 metal_layer = self.gate_metal.replace('M', 'Metal').replace('T','Top')
@@ -490,6 +492,7 @@ class mos_base(DeviceBase):
         # now finish drawing the diffusion
         xdiff_end = xcont_end+cont_Activ_overRec
         diff_box = Box(xdiff_beg, ydiff_beg+diffoffset, xdiff_end, ydiff_end+diffoffset)
+        self.active_box = diff_box
         if typ == 'N' :
             dbCreateRect(self, ndiff_layer, diff_box)
         else :
@@ -539,7 +542,9 @@ class mos_base(DeviceBase):
                 sources_connection_box = Box(s_left, top, s_right, top+self.horizontal_connection_width)
                 drains_connection_box = Box(d_left, top+self.horizontal_connection_width+self.connection_spacing, d_right,top+2*self.horizontal_connection_width+self.connection_spacing )
                 self.draw_rect(self.horizontal_layers[0], sources_connection_box, "Source")
+                self.sources_connection_box = sources_connection_box
                 self.draw_rect(self.horizontal_layers[0], drains_connection_box, "Drain")
+                self.drains_connection_box = drains_connection_box
                 for drain in drains:
                     drain_center = drain.getCenter().x
                     left = drain_center - self.vertical_connection_width/2
@@ -560,9 +565,11 @@ class mos_base(DeviceBase):
                 if gates_t:
                     gate_con_box = Box(gates_t[0].left, gates_t[0].bottom, gates_t[-1].right, gates_t[-1].top)
                     self.draw_rect(con_layer, gate_con_box, "Gate")
+                    self.gates_t_connection_box = gate_con_box
                 if gates_b:
                     gate_con_box = Box(gates_b[0].left, gates_b[0].bottom, gates_b[-1].right, gates_b[-1].top)
                     self.draw_rect(con_layer, gate_con_box, "Gate")
+                    self.gates_b_connection_box = gate_con_box
         
         ## Placing dummies beside the generated device
         if self.dummies_count > 0:
@@ -635,6 +642,11 @@ class mos_base(DeviceBase):
                     gate_offset = gatpoly_cont_dist if connection_box.getWidth()*0.9 < cont_size + gatpoly_Activ_over + cont_Activ_overRec else 0
                     via_box = Box(connection_box.left + gate_ratio + gate_offset, connection_box.bottom, connection_box.right - gate_ratio + gate_offset, connection_box.top)
                     self.genViaInBox(via_box, "GatPoly", "Metal1")
-                        
         
+        ## Save them to use in other classes
+        self.gates = gates
+        self.gates_b = gates_b
+        self.gates_t = gates_t
+        self.sources = sources
+        self.drains = drains                
         return self._getCurrentCellContext()
