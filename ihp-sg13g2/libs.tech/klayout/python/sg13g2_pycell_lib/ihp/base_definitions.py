@@ -1,4 +1,5 @@
 import re
+import pya
 from itertools import groupby
 
 class base_definitions():
@@ -269,14 +270,16 @@ class base_definitions():
                 prev_net = self.get_net(dev, end_term)
                 curr_net = self.get_net(next_dev, next_start)
                 merge_next = (prev_net == curr_net)
-                
-            layout_instructions.append({
+            instruction = {
                 'device': dev,
                 'fingers': fingers,
                 'start_diffusion': start_term,
                 'end_diffusion': end_term,
                 'merge_next': merge_next
-            })
+            }
+            layout_instructions.append(instruction)
+            if not merge_next and i < len(row) - 1:
+                pya.MessageBox.info("Warning", f"It is prefered to use even number of fingers to merge diffusions. \n {instruction} \n Horizontal spacing param will be applied", pya.MessageBox.Ok)
             
         return layout_instructions
     
