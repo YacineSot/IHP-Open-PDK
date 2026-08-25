@@ -19,7 +19,7 @@ class base_definitions():
     def gen_mos(self, w, l, ng, gate_connection, device_model, x, y, device_name="", connection_params={
         's_d_mlayer': "M1", 
         'gate_metal': "M2"
-    }):
+    }, start_diffusion="Source"):
         """
         Template method for subclasses to overwrite
         
@@ -273,7 +273,7 @@ class base_definitions():
             instruction = {
                 'device': dev,
                 'fingers': fingers,
-                'start_diffusion': start_term,
+                'start_diffusion': start_term.replace("S", "Source").replace("D","Drain"),
                 'end_diffusion': end_term,
                 'merge_next': merge_next
             }

@@ -55,7 +55,7 @@ class ihp_base_definitions(base_definitions):
     def gen_mos(self, w, l, ng, gate_connection, device_model, x, y, device_name="", connection_params={
         's_d_mlayer': "M1", 
         'gate_metal': "M2"
-    }):
+    }, start_diffusion="Source"):
         """
         Template method for subclasses to overwrite
         
@@ -88,6 +88,7 @@ class ihp_base_definitions(base_definitions):
         device.sx = x
         device.sy = y
         device.setupParams(params)
+        device.start_diffusion = start_diffusion
         device.genDeviceLayout()
         contacts = {
             'gate': device.gate_box.box,

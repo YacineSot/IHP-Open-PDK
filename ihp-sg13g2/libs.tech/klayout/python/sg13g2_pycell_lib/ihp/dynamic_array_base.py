@@ -79,7 +79,7 @@ class dynamic_array_base(base_definitions):
         core_devices = []
         for i, dev in enumerate(current_row):
             device_dimensions = self.get_mos_dimensions(w, l, dev['fingers'], self.gate_connection, model)
-            device = self.gen_mos(w, l, dev['fingers'], self.gate_connection, model, current_x, y_position, dev['device'], connections_dict)
+            device = self.gen_mos(w, l, dev['fingers'], self.gate_connection, model, current_x, y_position, dev['device'], connections_dict, dev['start_diffusion'])
             core_devices.append(device)
             current_x += device_dimensions['Width']
             print(f'device optimized params: {dev}')

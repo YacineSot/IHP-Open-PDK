@@ -238,6 +238,8 @@ class mos_base(DeviceBase):
         
         start_x = self.sx if hasattr(self, 'sx') and self.sx is not None else 0
         start_y = self.sy if hasattr(self, 'sy') and self.sy is not None else 0
+        start_diffusion = 'Source' if not hasattr(self, 'start_diffusion') else self.start_diffusion
+        other_diffusion = 'Drain' if start_diffusion == 'Source' else 'Source'
         self.use_poly_pin = False if not hasattr(self, 'use_poly_pin') else self.use_poly_pin
 
         typ = self.typ
@@ -541,23 +543,23 @@ class mos_base(DeviceBase):
                 d_right = drains[-1].getCenter().x + self.vertical_connection_width/2
                 sources_connection_box = Box(s_left, top, s_right, top+self.horizontal_connection_width)
                 drains_connection_box = Box(d_left, top+self.horizontal_connection_width+self.connection_spacing, d_right,top+2*self.horizontal_connection_width+self.connection_spacing )
-                self.draw_rect(self.horizontal_layers[0], sources_connection_box, "Source")
+                self.draw_rect(self.horizontal_layers[0], sources_connection_box, start_diffusion)
                 self.sources_connection_box = sources_connection_box
-                self.draw_rect(self.horizontal_layers[0], drains_connection_box, "Drain")
+                self.draw_rect(self.horizontal_layers[0], drains_connection_box, other_diffusion)
                 self.drains_connection_box = drains_connection_box
                 for drain in drains:
                     drain_center = drain.getCenter().x
                     left = drain_center - self.vertical_connection_width/2
                     right = drain_center + self.vertical_connection_width/2
                     con_box = Box(left, drain.bottom, right, drains_connection_box.top)
-                    self.draw_rect(self.vertical_layers[0], con_box, "Drain")
+                    self.draw_rect(self.vertical_layers[0], con_box, other_diffusion)
                     self.connectBoxes(con_box, drains_connection_box, self.horizontal_layers[0]._name, self.vertical_layers[0]._name)
                 for source in sources:
                     source_center = source.getCenter().x
                     left = source_center - self.vertical_connection_width/2
                     right = source_center + self.vertical_connection_width/2
                     con_box = Box(left, source.bottom, right, sources_connection_box.top)
-                    self.draw_rect(self.vertical_layers[0], con_box, "Source")
+                    self.draw_rect(self.vertical_layers[0], con_box, start_diffusion)
                     self.connectBoxes(con_box, sources_connection_box, self.horizontal_layers[0]._name, self.vertical_layers[0]._name)
             
             if self.connect_gates:
