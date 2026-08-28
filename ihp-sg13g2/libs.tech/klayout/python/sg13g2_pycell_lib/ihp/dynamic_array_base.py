@@ -54,7 +54,8 @@ class dynamic_array_base(base_definitions):
             'connection_spacing': self.connection_spacing,
             'connect_gates_use_poly': self.connect_gates_use_poly,
             's_d_mlayer': "M2", 
-            'gate_metal': "M1"
+            'gate_metal': "M1",
+            'odd_vertical': self.odd_vertical
         }
         row_dimentions = self.get_row_dimentions(pattern, model, w, l, dl)
         space_needed_for_ovelapping = 0

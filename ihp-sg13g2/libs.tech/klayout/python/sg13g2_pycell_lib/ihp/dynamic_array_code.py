@@ -51,6 +51,7 @@ class dynamic_array(dynamic_array_base, ihp_base_definitions, DeviceBase):
         specs('gates_connected_devices', '', 'Devices which gates connected together')
         specs('source_connected_devices', 'AB', 'Devices which sources connected together')
         specs('drain_connected_devices', '', 'Devices which sources connected together')
+        specs('odd_vertical', True, 'Vertical metals odd')
         
         cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', 2, 'Number of dummies')
