@@ -82,10 +82,10 @@ class dynamic_array_base(base_definitions):
             device = self.gen_mos(w, l, dev['fingers'], self.gate_connection, model, current_x, y_position, dev['device'], connections_dict, dev['start_diffusion'])
             core_devices.append(device)
             current_x += device_dimensions['Width']
-            print(f'device optimized params: {dev}')
+            #print(f'device optimized params: {dev}')
             if dev['merge_next']:
                 current_x += -space_needed_for_ovelapping
-                print('merging with next')
+                #print('merging with next')
             else:
                 current_x += self.horizontal_spacing
         
@@ -98,12 +98,15 @@ class dynamic_array_base(base_definitions):
                 's_d_mlayer': "M1", 
                 'gate_metal': "M1"
             }))
+        
+        connections_size = 2*(self.horizontal_connection_width*1e6 + self.connection_spacing*1e6)
         top = device['gate_top_contact'].top if device['gate_top_contact'] else device['gate'].top
         bottom = device['gate_bottom_contact'].bottom if device['gate_bottom_contact'] else device['gate'].bottom
+        bottom -= connections_size
         ## fixing height
         row_dimentions["Height"] = top-bottom
         ## Adding connecitions offset:
-        top += 2*(self.horizontal_connection_width*1e6 + self.connection_spacing*1e6)
+        top += connections_size
         left_dev = left_dummies[0] if len(left_dummies) > 0 else core_devices[0]
         right_dev = right_dummies[-1] if len(right_dummies) > 0 else core_devices[-1]
         left = left_dev['active_box'].left
@@ -145,6 +148,7 @@ class dynamic_array_base(base_definitions):
     
     def gen_dynamic_array(self):
         down_start_y = 0
+        connections_spacing = self.connection_spacing + self.horizontal_connection_width + self.connection_spacing + self.horizontal_connection_width
         pmos_rows = []
         nmos_rows = []
         if self.pmos_layout_pattern:

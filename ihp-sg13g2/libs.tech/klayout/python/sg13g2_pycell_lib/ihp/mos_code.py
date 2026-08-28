@@ -70,7 +70,7 @@ class mos_base(DeviceBase):
         specs('l' ,   defL, 'Length')
         specs('gate_cnt_ratio', 100, 'Gate Length contact ratio %', RangeConstraint(1, 100))
         specs('ng',   defNG, 'Number of Gates')
-        specs('split_width', True, 'Split the width over the number of gates')
+        specs('split_width', False, 'Split the width over the number of gates')
         cls.add_separation(cls, specs, 'Device connections')
         specs('connect_diffusions', True, 'Auto connect S/D diffusions')
         specs('connect_gates', True, 'Auto connect gates')
@@ -100,6 +100,7 @@ class mos_base(DeviceBase):
         
         specs('minW', minW, 'Minimum Width', ReadOnlyConstraint())
         specs('minL', minL, 'Minimum Length', ReadOnlyConstraint())
+        #specs('ws',   defW, 'SingleWidth', ReadOnlyConstraint())
 
     def setupParams(self, params):
         self.params = params
@@ -207,7 +208,7 @@ class mos_base(DeviceBase):
                 width += additional_width
         if connection_params:
             height += connection_params['horizontal_connection_width']*2 + connection_params['connection_spacing']*2
-        print(f'device dimensions: (width, height): ({width}, {height})')
+        #print(f'device dimensions: (width, height): ({width}, {height})')
         return width, height
 
     def get_self_dimensions(self):
@@ -227,7 +228,7 @@ class mos_base(DeviceBase):
         # Ensure w and l are in um (pmos approach)
         # Protection from huge size
         if self.w > 200:
-            print('Warning: detecting big device, dividing it by 1e6')
+            #print('Warning: detecting big device, dividing it by 1e6')
             self.w *= 1e-6
             self.l *= 1e-6
         w = self.w
