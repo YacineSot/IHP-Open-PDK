@@ -127,7 +127,8 @@ class dynamic_array_base(base_definitions):
                     conn_center = dev_src_box.center().x
                     conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_src_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
                     self.draw_rect(conn_box, self.vertical_layers[0], net)
-                    self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    if self.metal_layers[0] != self.vertical_layers[0]:
+                        self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
                     
             if 'DRN' in net:
@@ -140,7 +141,8 @@ class dynamic_array_base(base_definitions):
                     conn_center = dev_drn_box.center().x
                     conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, net_box.bottom, conn_center + self.horizontal_connection_width/2, dev_drn_box.top)
                     self.draw_rect(conn_box, self.vertical_layers[0], net)
-                    self.connect_boxes(conn_box, dev_drn_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    if self.metal_layers[0] != self.vertical_layers[0]:
+                        self.connect_boxes(conn_box, dev_drn_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
             if 'GATE' in net:
                 if net not in nets_horizental_boxes:
@@ -152,7 +154,8 @@ class dynamic_array_base(base_definitions):
                     conn_center = dev_gate_box.center().x
                     conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_gate_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
                     self.draw_rect(conn_box, self.vertical_layers[0], net)
-                    self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    if self.metal_layers[0] != self.vertical_layers[0]:
+                        self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
         top = max(box.top for box in nets_horizental_boxes.values())
         bottom = min(box.bottom for box in nets_horizental_boxes.values())

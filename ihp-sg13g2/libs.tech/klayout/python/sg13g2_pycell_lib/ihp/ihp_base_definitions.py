@@ -38,9 +38,11 @@ class ihp_base_definitions(base_definitions):
         self.poly_layer = Layer("GatPoly")
         self.horizontal_layers = []
         self.vertical_layers = []
+        self.metal_layers = []
         for i in range(1,5):
-            if i < self.start_level: continue;
             layer = Layer(f"Metal{i}")
+            self.metal_layers.append(layer)
+            if i < self.start_level: continue;
             if self.odd_vertical:
                 if i%2 == 0:
                     self.horizontal_layers.append(layer)
