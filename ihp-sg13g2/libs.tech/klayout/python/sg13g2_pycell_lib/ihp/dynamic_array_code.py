@@ -41,17 +41,18 @@ class dynamic_array(dynamic_array_base, ihp_base_definitions, DeviceBase):
         specs('vertical_spacing', 0.3, 'Vertical Spacing', unit='um')
         specs('gate_connection', 'T-B', 'Gate Connection Side', ChoiceConstraint(['T-B','T', 'B', 'none']))
         specs('connect_gates_use_poly', True, 'Connect gates using poly')
-        specs('horizontal_connection_width', 0.5e-6, 'Horizontal Connection metal width', unit='m')
-        specs('vertical_connection_width', 0.5e-6, 'Vertical Connection metal width', unit='m')
-        specs('connection_spacing', 0.5e-6, 'Connection metal spacing', unit='m')
+        specs('horizontal_connection_width', 0.5, 'Horizontal Connection metal width', unit='um')
+        specs('vertical_connection_width', 0.5, 'Vertical Connection metal width', unit='um')
+        specs('connection_spacing', 0.5, 'Connection metal spacing', unit='um')
         specs('nmos_layout_pattern', '3A4B3A', 'NMOS Layout Pattern')
-        specs('pmos_layout_pattern', '3A4B3A', 'PMOS Layout Pattern')
+        specs('pmos_layout_pattern', '3C4D3C', 'PMOS Layout Pattern')
         specs('gate_connected_to_source_devices', '', 'Devices which gate linked to source')
         specs('gate_connected_to_drain_devices', '', 'Devices which gate linked to drain')
         specs('gates_connected_devices', '', 'Devices which gates connected together')
         specs('source_connected_devices', 'AB', 'Devices which sources connected together')
-        specs('drain_connected_devices', '', 'Devices which sources connected together')
+        specs('drain_connected_devices', '', 'Devices which drains connected together')
         specs('odd_vertical', True, 'Vertical metals odd')
+        cls.additionnal_specs(cls, specs)
         
         cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', 2, 'Number of dummies')
@@ -65,17 +66,13 @@ class dynamic_array(dynamic_array_base, ihp_base_definitions, DeviceBase):
         
         cls.default_ring = 'auto'
         super().defineParamSpecs(specs)
+        
+        specs('enable_warnings', False, 'Enable warning messages')
 
     def setupParams(self, params):
         # process parameter values entered by user
         self.__dict__.update(params)
-        
-        if params['model_type'] == 'HV':
-            self.nmos = nmosHV
-            self.pmos = pmosHV
-        else:
-            self.nmos = nmos
-            self.pmos = pmos
+        self.set_devices(self.model_type)
         params['guardRingType'] = 'auto'
         super().setupParams(params)
     

@@ -17,6 +17,7 @@ proc write_save_lines {type model schpath spiceprefix instname} {
     append sch_expand(savelist) ".save $devpath\[vdss\]\n"
     append sch_expand(savelist) ".save $devpath\[vds\]\n"
     append sch_expand(savelist) ".save $devpath\[cgg\]\n"
+    append sch_expand(savelist) ".save $devpath\[cgs\]\n"
     append sch_expand(savelist) ".save $devpath\[cgsol\]\n"
     append sch_expand(savelist) ".save $devpath\[cgdol\]\n"
   } elseif {[regexp {vertical_npn} $type]} {
@@ -173,6 +174,7 @@ proc display_fet_params {instname} {
     set vdss  [raw_or_double "v($devpath\[vdss\])"]
     set vds   [raw_or_double "v($devpath\[vds\])"]
     set cgg0  [raw_or_double "$devpath\[cgg\]"]
+    set cgs  [raw_or_double "$devpath\[cgs\]"]
     set cgdol [raw_or_double "$devpath\[cgdol\]"]
     set cgsol [raw_or_double "$devpath\[cgsol\]"]
 
@@ -191,6 +193,7 @@ proc display_fet_params {instname} {
     append txt "vdss  = [to_eng_safe $vdss]\n"
     append txt "vds   = [to_eng_safe $vds]\n"
     append txt "cgg   = [to_eng_safe $cgg_sum]\n"
+    append txt "cgs   = [to_eng_safe $cgs]\n"
 
     # ft and gm/id only if inputs numeric
     set pi 3.141592654
@@ -318,6 +321,7 @@ proc menupdk {} {
         value="
 .lib cornerMOSlv.lib mos_tt
 .lib cornerMOShv.lib mos_tt
+.lib cornerMOSCAP.lib moscap_tt
 .lib cornerHBT.lib hbt_typ
 .lib cornerRES.lib res_typ
 .lib cornerCAP.lib cap_typ

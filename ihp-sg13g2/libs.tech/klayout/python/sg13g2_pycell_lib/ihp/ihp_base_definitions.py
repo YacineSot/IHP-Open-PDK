@@ -28,7 +28,7 @@ class ihp_base_definitions(base_definitions):
         self.nmos = my_nmos_class
         
         """
-        if model_type == "high_voltage":
+        if model_type == "HV":
             self.pmos = pmosHV
             self.nmos = nmosHV
         else:
@@ -77,7 +77,7 @@ class ihp_base_definitions(base_definitions):
                     'ng': ng, 
                     'gate_connection': gate_connection,
                     'cnt_w_ratio': 80,
-                    'gate_cnt_ratio': 100,
+                    'gate_cnt_ratio': 80,
                     'guardRingType': 'none',
                     'guardRingDistance': 0.5,
                 } | connection_params
@@ -91,12 +91,20 @@ class ihp_base_definitions(base_definitions):
         device.start_diffusion = start_diffusion
         device.genDeviceLayout()
         contacts = {
-            'gate': device.gate_box.box,
-            'source_contact': device.source_box.box,
-            'drain_contact': device.drain_box.box,
-            'gate_top_contact': device.gate_box_t.box if hasattr(device, 'gate_box_t') else None,
-            'gate_bottom_contact': device.gate_box_b.box if hasattr(device, 'gate_box_b') else None,
-            'active_box': device.active_box.box
+            'gate': device.gate_box,
+            'source_contact': device.source_box,
+            'drain_contact': device.drain_box,
+            'gate_top_contact': device.gate_box_t if hasattr(device, 'gate_box_t') else None,
+            'gate_bottom_contact': device.gate_box_b if hasattr(device, 'gate_box_b') else None,
+            'active_box': device.active_box,
+            'top': device.top,
+            'bottom': device.bottom,
+            'drains': device.drains,
+            'sources': device.sources,
+            'gates': device.gates,
+            'gates_b': device.gates_b,
+            'gates_t': device.gates_t,
+            'name': device_name
         }
         # if device_name:
         #     self.draw_label(device.gate_box.box, device_name, Layer("TEXT"))
@@ -162,27 +170,23 @@ class ihp_base_definitions(base_definitions):
         """
         Template method for subclasses to overwrite
         
-        box: Box() object to place the via
+        box: DBox() object to place the via
         b_layer: bottom layer of the via (e.g. "M1", "M2", "Poly", etc.)
         t_layer: top layer of the via (e.g. "M1", "M2", "Poly", etc.)
         
-        return object: Box()
+        return object: DBox()
         
         """
         via_device = via_stack()
         params = {
             'vn_columns': 0,
             'vn_rows': 0,
-            'vt1_columns': 0,
-            'vt1_rows': 0,
-            'vt2_columns': 0,
-            'vt2_rows': 0,
             'b_layer': b_layer._name,
             't_layer': t_layer._name,
             'origin': origin,
-            'extra_vias': False,
+            'extra_vias': True,
             'sx': box.center().x,
-            'sy': box.center().y
+            'sy': box.center().y,
         }
         via_device.tech = self.tech
         via_device._getCurrentCellContext = self._getCurrentCellContext
@@ -210,7 +214,7 @@ class ihp_base_definitions(base_definitions):
         if intersection_box.area() == 0:
             return None
         
-        print(f"Connecting boxes on layers {b_layer} and {t_layer} with intersection box: {intersection_box}")
+        #print(f"Connecting boxes on layers {b_layer._name} and {t_layer._name} with intersection box: {intersection_box}")
         
         return self.gen_via(intersection_box, b_layer, t_layer)
         

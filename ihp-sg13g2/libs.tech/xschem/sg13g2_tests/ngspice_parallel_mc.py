@@ -99,7 +99,11 @@ def run_worker(args):
                     for line in block.strip().splitlines():
                         if '=' in line:
                             result_name, result_value = line.split('=')
-                            result[result_name.strip()] = float(result_value.strip())
+                            try:
+                                result[result_name.strip()] = float(result_value.strip())
+                            except():
+                                print(f"cant convert result_value={result_value} to float!")
+                                result[result_name.strip()] = 0.00
                     # write in csv file
                     if writeHeadings:
                         writer.writerow(list(result.keys()))

@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import pya
 
 from .base_definitions import base_definitions
@@ -49,13 +51,14 @@ class dynamic_array_base(base_definitions):
         connections_dict = {
             'horizontal_connection_width': self.horizontal_connection_width,
             'vertical_connection_width': self.vertical_connection_width,
-            'connect_diffusions': True,
+            'connect_diffusions': False,
             'connect_gates': True,
             'connection_spacing': self.connection_spacing,
             'connect_gates_use_poly': self.connect_gates_use_poly,
-            's_d_mlayer': "M2", 
+            's_d_mlayer': "M1", 
             'gate_metal': "M1",
-            'odd_vertical': self.odd_vertical
+            'odd_vertical': self.odd_vertical,
+            'distribute_connections': True,
         }
         row_dimentions = self.get_row_dimentions(pattern, model, w, l, dl)
         space_needed_for_ovelapping = 0
@@ -100,14 +103,62 @@ class dynamic_array_base(base_definitions):
                 'gate_metal': "M1"
             }))
         
-        connections_size = 2*(self.horizontal_connection_width*1e6 + self.connection_spacing*1e6)
-        top = device['gate_top_contact'].top if device['gate_top_contact'] else device['gate'].top
-        bottom = device['gate_bottom_contact'].bottom if device['gate_bottom_contact'] else device['gate'].bottom
-        bottom -= connections_size
+        top = device['top']
+        bottom = device['bottom']
+        ## Draw row connections
+        nets_horizental_boxes = {}
+        nets_device_boxes = defaultdict(list)
+        current_src_net_y = top + self.vertical_spacing
+        current_drn_net_y = bottom - self.vertical_spacing
+        for core_device in core_devices:
+            source_net = self.get_net(core_device['name'], 'S')
+            drain_net = self.get_net(core_device['name'], 'D')
+            gate_net = self.get_net(core_device['name'], 'G')
+            nets_device_boxes[source_net] += core_device['sources']
+            nets_device_boxes[drain_net] += core_device['drains']
+            nets_device_boxes[gate_net] += core_device['gates_t']
+        for net in nets_device_boxes:
+            if 'SRC' in net:
+                net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_src_net_y, max(box.right for box in nets_device_boxes[net]), current_src_net_y + self.vertical_connection_width)
+                nets_horizental_boxes[net] = net_box
+                self.draw_rect(net_box, self.horizontal_layers[0], net)
+                current_src_net_y += self.vertical_connection_width + self.connection_spacing
+                for dev_src_box in nets_device_boxes[net]:
+                    conn_center = dev_src_box.center().x
+                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_src_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
+                    self.draw_rect(conn_box, self.vertical_layers[0], net)
+                    self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    
+            if 'DRN' in net:
+                if net not in nets_horizental_boxes:
+                    net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_drn_net_y - self.vertical_connection_width, max(box.right for box in nets_device_boxes[net]), current_drn_net_y)
+                    nets_horizental_boxes[net] = net_box
+                    self.draw_rect(net_box, self.horizontal_layers[0], net)
+                    current_drn_net_y -= self.vertical_connection_width + self.connection_spacing
+                for dev_drn_box in nets_device_boxes[net]:
+                    conn_center = dev_drn_box.center().x
+                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, net_box.bottom, conn_center + self.horizontal_connection_width/2, dev_drn_box.top)
+                    self.draw_rect(conn_box, self.vertical_layers[0], net)
+                    self.connect_boxes(conn_box, dev_drn_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
+            if 'GATE' in net:
+                if net not in nets_horizental_boxes:
+                    net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_src_net_y, max(box.right for box in nets_device_boxes[net]), current_src_net_y + self.vertical_connection_width)
+                    nets_horizental_boxes[net] = net_box
+                    self.draw_rect(net_box, self.horizontal_layers[0], net)
+                    current_src_net_y += self.vertical_connection_width + self.connection_spacing
+                for dev_gate_box in nets_device_boxes[net]:
+                    conn_center = dev_gate_box.center().x
+                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_gate_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
+                    self.draw_rect(conn_box, self.vertical_layers[0], net)
+                    self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
+        top = max(box.top for box in nets_horizental_boxes.values())
+        bottom = min(box.bottom for box in nets_horizental_boxes.values())
         ## fixing height
         row_dimentions["Height"] = top-bottom
         ## Adding connecitions offset:
-        top += connections_size
         left_dev = left_dummies[0] if len(left_dummies) > 0 else core_devices[0]
         right_dev = right_dummies[-1] if len(right_dummies) > 0 else core_devices[-1]
         left = left_dev['active_box'].left
@@ -155,9 +206,17 @@ class dynamic_array_base(base_definitions):
         if self.pmos_layout_pattern:
             pmos_rows = self.gen_array_by_model(self.pmos_layout_pattern, self.pmos, self.pmos_w, self.pmos_l, self.dummy_pmos_l, 'well')
             down_start_y = pmos_rows[0]['guard_ring_box'].bottom - self.guardRingWidth
+        if any(char in self.nmos_layout_pattern for char in self.pmos_layout_pattern if char.isalpha()):
+            self.show_warning("""Use different letters for the pmos and nmos layout patterns, otherwise the devices will be merged
+                              Skipping drawing the nmos array""", False)
+            return
         if self.nmos_layout_pattern:
-            nmos_dimensions = self.get_mos_dimensions(self.nmos_w, self.nmos_l, 1, self.gate_connection, self.nmos, {'horizontal_connection_width': self.horizontal_connection_width*1e6, 'connection_spacing': self.connection_spacing*1e6})
+            nmos_dimensions = self.get_mos_dimensions(self.nmos_w, self.nmos_l, 1, self.gate_connection, self.nmos, {'horizontal_connection_width': self.horizontal_connection_width, 'connection_spacing': self.connection_spacing})
             down_start_y -= self.vertical_spacing + self.guardRingWidth + self.vertical_spacing + nmos_dimensions["Height"]
+            first_row_nets = set(self.get_row_nets([letter for letter in self.nmos_layout_pattern.split()[0] if letter.isalpha()]))
+            first_row_nets = [net for net in first_row_nets if 'SRC' in net or 'GATE' in net]
+            first_row_top_connections = (self.connection_spacing + self.horizontal_connection_width)*(len(first_row_nets) -1)
+            down_start_y -= first_row_top_connections
             nmos_rows = self.gen_array_by_model(self.nmos_layout_pattern, self.nmos, self.nmos_w, self.nmos_l, self.dummy_nmos_l, 'sub','down', down_start_y)
             
         return

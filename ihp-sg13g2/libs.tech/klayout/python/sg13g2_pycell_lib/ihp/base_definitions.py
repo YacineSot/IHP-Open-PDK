@@ -168,24 +168,58 @@ class base_definitions():
         term_to_net = {}
         source_connected = self.source_connected_devices
         drain_connected = self.drain_connected_devices
+        gate_connected = self.gates_connected_devices
+        gate_connected_to_source = self.gate_connected_to_source_devices
+        gate_connected_to_drain = self.gate_connected_to_drain_devices
         
         # Process Sources
-        for i, group in enumerate(source_connected.split()):
-            net_name = f"SRC_NET_{group}_{i+1}"
+        for group in source_connected.split():
+            net_name = f"SRC_NET_{group}"
+            connected_gates = [g for g in gate_connected_to_source if any(d in group for d in g)]
+            if connected_gates:
+                net_name += "_GATE_" + "_".join(connected_gates)
             for device_letter in group:
                 term_to_net[(device_letter, 'S')] = net_name
+                if device_letter in gate_connected_to_source:
+                    term_to_net[(device_letter, 'G')] = net_name
                 
         # Process Drains
-        for i, group in enumerate(drain_connected.split()):
-            net_name = f"DRN_NET_{group}_{i+1}"
+        for group in drain_connected.split():
+            net_name = f"DRN_NET_{group}"
+            connected_gates = [g for g in gate_connected_to_drain if any(d in group for d in g)]
+            if connected_gates:
+                net_name += "_GATE_" + "_".join(connected_gates)
             for device_letter in group:
                 term_to_net[(device_letter, 'D')] = net_name
+                if device_letter in gate_connected_to_drain:
+                    term_to_net[(device_letter, 'G')] = net_name
+        
+        # Process Gates
+        for group in gate_connected.split():
+            if any((device_letter, 'G') in term_to_net for device_letter in group):
+                existing_net = next(term_to_net[(d, 'G')] for d in group if (d, 'G') in term_to_net)
+                if (device_letter, 'G') not in term_to_net:
+                    term_to_net[(device_letter, 'G')] = existing_net
+                continue;
                 
+            net_name = f"GATE_NET_{group}"
+            for device_letter in group:
+                term_to_net[(device_letter, 'G')] = net_name
+
         self.term_to_net = term_to_net
 
     def get_net(self, device, terminal):
         """Returns the shared net ID, or a unique ID if it doesn't share anything."""
-        return self.term_to_net.get((device, terminal), f"UNIQUE_{device}_{terminal}")
+        con_terminal = 'SRC' if terminal == 'S' else 'DRN' if terminal == 'D' else 'GATE'
+        return self.term_to_net.get((device, terminal), f"{device}_{con_terminal}")
+
+    def get_row_nets(self, row):
+        """
+        Returns a net array for the given row.
+        Example: [SRC_NET_AB_1, DRN_NET_CD_1, GATE_NET_EF_1, ...]
+        """
+        nets = (self.get_net(dev, term) for dev in set(row) for term in ('S', 'D', 'G'))
+        return list(dict.fromkeys(nets))
 
     @staticmethod
     def get_end_terminal(start_term, fingers):
@@ -279,9 +313,16 @@ class base_definitions():
             }
             layout_instructions.append(instruction)
             if not merge_next and i < len(row) - 1:
-                pya.MessageBox.info("Warning", f"It is prefered to use even number of fingers to merge diffusions. \n {instruction} \n Horizontal spacing param will be applied", pya.MessageBox.Ok)
+                self.show_warning(f"It is prefered to use even number of fingers to merge diffusions. \n {instruction} \n Horizontal spacing param will be applied")
             
         return layout_instructions
+    
+    def show_warning(self, message, skippable=True):
+        """
+        Displays a warning message. Subclasses can override this to change how warnings are shown.
+        """
+        if self.enable_warnings or not skippable:
+            pya.MessageBox.info("Warning", message, pya.MessageBox.Ok)
     
     ####################################################
     
