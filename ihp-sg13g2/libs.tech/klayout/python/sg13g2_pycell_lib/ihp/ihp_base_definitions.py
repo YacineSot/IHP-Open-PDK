@@ -8,12 +8,25 @@ from .geometry import *
 from .guard_ring_code import generate_guard_ring
 from .via_stack_code import via_stack
 from .utility_functions import GridFix
+import cni.dlo
 
 
 class ihp_base_definitions(base_definitions):
     def additionnal_specs(self, specs):
         specs("start_level", 1, "First connection metal", ChoiceConstraint([1,2]))
         specs("odd_vertical", True, "Vertical Metal ODD")
+    
+    def change_cell(self, row_name):
+        sub_cell = self.layout.create_cell(row_name)
+                
+        # 2. Grab the global PyCellContext
+        py_context = cni.dlo.PyCellContext.getCurrentPyCellContext()
+        self.original_cell = py_context.cell
+        # 3. Hijack the context: Point it to our new sub_cell
+        py_context._cell = sub_cell
+    
+    def rollback_cell(self):
+        cni.dlo.PyCellContext.getCurrentPyCellContext()._cell = self.original_cell
     
     def additionnal_params(self, params):
         self.start_level = int(params["start_level"])
@@ -28,6 +41,7 @@ class ihp_base_definitions(base_definitions):
         self.nmos = my_nmos_class
         
         """
+        self.layout = Layer.layout
         if model_type == "HV":
             self.pmos = pmosHV
             self.nmos = nmosHV
@@ -54,6 +68,14 @@ class ihp_base_definitions(base_definitions):
                 else:
                     self.vertical_layers.append(layer)
     
+    def move_device_by(self, device, x, y):
+        device_context = device._getCurrentCellContext()
+        print(f"device {device.__class__} have: {len(device_context.shapes)} shape")
+        for shape in device_context.shapes:
+            if type(shape._box) == bool: continue
+            shape._bbox.moveBy(x, y)
+    
+    
     def gen_mos(self, w, l, ng, gate_connection, device_model, x, y, device_name="", connection_params={
         's_d_mlayer': "M1", 
         'gate_metal': "M2"
@@ -73,6 +95,7 @@ class ihp_base_definitions(base_definitions):
         return object: {gate: Box(), source_contact: Box(), drain_contact: Box(), gate_top_contact: Box(), gate_bottom_contact: Box()}
         
         """
+        original_cell_context = self._getCurrentCellContext
         device = device_model()
         params = {'w': w, 
                     'l': l, 
@@ -84,7 +107,9 @@ class ihp_base_definitions(base_definitions):
                     'guardRingDistance': 0.5,
                 } | connection_params
         device.tech = self.tech
-        device._getCurrentCellContext = self._getCurrentCellContext
+        device.addCellContext(f"{device_model.__name__}_w:{w}_l:{l}_{device_name}")
+        device._getCurrentCellContext = lambda: device._cellContexts.get(f"{device_model.__name__}_w:{w}_l:{l}_{device_name}")
+        self._getCurrentCellContext = device._getCurrentCellContext
         if device_name:
             device.label = device_name
         device.sx = x
@@ -92,6 +117,7 @@ class ihp_base_definitions(base_definitions):
         device.setupParams(params)
         device.start_diffusion = start_diffusion
         device.genDeviceLayout()
+        self._getCurrentCellContext = original_cell_context
         contacts = {
             'gate': device.gate_box,
             'source_contact': device.source_box,
@@ -106,7 +132,8 @@ class ihp_base_definitions(base_definitions):
             'gates': device.gates,
             'gates_b': device.gates_b,
             'gates_t': device.gates_t,
-            'name': device_name
+            'name': device_name,
+            'device': device
         }
         # if device_name:
         #     self.draw_label(device.gate_box.box, device_name, Layer("TEXT"))

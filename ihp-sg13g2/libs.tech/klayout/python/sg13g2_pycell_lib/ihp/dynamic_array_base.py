@@ -7,7 +7,7 @@ from .base_definitions import base_definitions
 
 class dynamic_array_base(base_definitions):
     
-    def get_row_dimentions(self, pattern, model, w, l, dl):
+    def get_row_dimentions(self, pattern, index, model, w, l, dl):
         ## Calculate Dummies dimentions
         dummies_overlap_sd = self.overlap_dummies_diffusions
         dummy_ng = self.dummies_count if dummies_overlap_sd else 1
@@ -18,7 +18,7 @@ class dynamic_array_base(base_definitions):
         
         ## Calculate dimentions
         current_processed_device = 1
-        row_layout_instructions = self.layout_instructions[pattern]
+        row_layout_instructions = self.layout_instructions[index]
         devices_fingers = [row_layout_instructions[0]['fingers']]
         while current_processed_device < len(row_layout_instructions):
             current_dev_fingers = row_layout_instructions[current_processed_device]['fingers']
@@ -41,7 +41,7 @@ class dynamic_array_base(base_definitions):
         }
         
     
-    def gen_row(self, pattern, model, w, l, dl, y_position, guard_ring_shape, guard_ring_type):
+    def gen_row(self, pattern, index, model, w, l, dl, y_position, guard_ring_shape, guard_ring_type, guard_ring_trans=None):
         """
         STEPS: 
         Generate left dummies (like that the origin will be in the bottom left of the first dummy)
@@ -60,7 +60,7 @@ class dynamic_array_base(base_definitions):
             'odd_vertical': self.odd_vertical,
             'distribute_connections': True,
         }
-        row_dimentions = self.get_row_dimentions(pattern, model, w, l, dl)
+        row_dimentions = self.get_row_dimentions(pattern, index, model, w, l, dl)
         space_needed_for_ovelapping = 0
         
         ## Generate left dummies
@@ -79,7 +79,7 @@ class dynamic_array_base(base_definitions):
         ## Generate the core device
         core_x_offset = row_dimentions['Dummies_Width'] + self.dummies_core_spacing
         current_x = core_x_offset
-        current_row = self.layout_instructions[pattern]
+        current_row = self.layout_instructions[index]
         core_devices = []
         for i, dev in enumerate(current_row):
             device_dimensions = self.get_mos_dimensions(w, l, dev['fingers'], self.gate_connection, model)
@@ -106,21 +106,22 @@ class dynamic_array_base(base_definitions):
         top = device['top']
         bottom = device['bottom']
         ## Draw row connections
-        nets_horizental_boxes = {}
+        nets_horizontal_boxes = {}
         nets_device_boxes = defaultdict(list)
         current_src_net_y = top + self.vertical_spacing
         current_drn_net_y = bottom - self.vertical_spacing
-        for core_device in core_devices:
+        for i, core_device in enumerate(core_devices):
             source_net = self.get_net(core_device['name'], 'S')
             drain_net = self.get_net(core_device['name'], 'D')
             gate_net = self.get_net(core_device['name'], 'G')
             nets_device_boxes[source_net] += core_device['sources']
             nets_device_boxes[drain_net] += core_device['drains']
             nets_device_boxes[gate_net] += core_device['gates_t']
+            #print(f"pattern = {pattern},current_row[{i}]['vertical_connection']: {current_row[i]['vertical_connection']}")
         for net in nets_device_boxes:
-            if 'SRC' in net:
+            if 'SRC' in net and 'S' not in current_row[i]['vertical_connection']:
                 net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_src_net_y, max(box.right for box in nets_device_boxes[net]), current_src_net_y + self.vertical_connection_width)
-                nets_horizental_boxes[net] = net_box
+                nets_horizontal_boxes[net] = net_box
                 self.draw_rect(net_box, self.horizontal_layers[0], net)
                 current_src_net_y += self.vertical_connection_width + self.connection_spacing
                 for dev_src_box in nets_device_boxes[net]:
@@ -131,10 +132,10 @@ class dynamic_array_base(base_definitions):
                         self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
                     
-            if 'DRN' in net:
-                if net not in nets_horizental_boxes:
+            if 'DRN' in net and 'D' not in current_row[i]['vertical_connection']:
+                if net not in nets_horizontal_boxes:
                     net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_drn_net_y - self.vertical_connection_width, max(box.right for box in nets_device_boxes[net]), current_drn_net_y)
-                    nets_horizental_boxes[net] = net_box
+                    nets_horizontal_boxes[net] = net_box
                     self.draw_rect(net_box, self.horizontal_layers[0], net)
                     current_drn_net_y -= self.vertical_connection_width + self.connection_spacing
                 for dev_drn_box in nets_device_boxes[net]:
@@ -145,9 +146,9 @@ class dynamic_array_base(base_definitions):
                         self.connect_boxes(conn_box, dev_drn_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
             if 'GATE' in net:
-                if net not in nets_horizental_boxes:
+                if net not in nets_horizontal_boxes:
                     net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_src_net_y, max(box.right for box in nets_device_boxes[net]), current_src_net_y + self.vertical_connection_width)
-                    nets_horizental_boxes[net] = net_box
+                    nets_horizontal_boxes[net] = net_box
                     self.draw_rect(net_box, self.horizontal_layers[0], net)
                     current_src_net_y += self.vertical_connection_width + self.connection_spacing
                 for dev_gate_box in nets_device_boxes[net]:
@@ -157,8 +158,11 @@ class dynamic_array_base(base_definitions):
                     if self.metal_layers[0] != self.vertical_layers[0]:
                         self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
-        top = max(box.top for box in nets_horizental_boxes.values())
-        bottom = min(box.bottom for box in nets_horizental_boxes.values())
+        
+        top = device['gate_top_contact'].top if device['gate_top_contact'] else device['gate'].top
+        top = max(top, max(box.top for box in nets_horizontal_boxes.values()))
+        bottom = device['gate_bottom_contact'].bottom if device['gate_bottom_contact'] else device['gate'].bottom
+        bottom = min(bottom, min(box.bottom for box in nets_horizontal_boxes.values()))
         ## fixing height
         row_dimentions["Height"] = top-bottom
         ## Adding connecitions offset:
@@ -168,15 +172,24 @@ class dynamic_array_base(base_definitions):
         right = right_dev['active_box'].right
         ## fixing width
         row_dimentions["Full_Width"] = right - left
-        ring_boundary_box = pya.DBox(left-self.guardRingDistance, bottom - self.vertical_spacing, right + self.guardRingDistance, top + self.vertical_spacing)
+        guard_ring_top = top + self.vertical_spacing if not guard_ring_trans else guard_ring_trans['top']
+        guard_ring_bottom = bottom - self.vertical_spacing if not guard_ring_trans else guard_ring_trans['bottom']
+        ring_boundary_box = pya.DBox(left-self.guardRingDistance, guard_ring_bottom, right + self.guardRingDistance, guard_ring_top)
         
         self.gen_tap(ring_boundary_box,guard_ring_type , guard_ring_shape, self.guardRingWidth )
+        
+        for net, boxes in nets_horizontal_boxes.items():
+            if net not in self.all_horizontal_connections:
+                self.all_horizontal_connections[net] = []
+            self.all_horizontal_connections[net] += [boxes]
         return {
+            "row_pattern": pattern,
+            "row_index": index,
             "left_dummies": left_dummies,
             "right_dummies": right_dummies,
             "core_devices": core_devices,
             "guard_ring_box": ring_boundary_box,
-            "row_dimensions": row_dimentions
+            "row_dimensions": row_dimentions,
         }
     
     def calc_overlapping_distance(self, device):
@@ -187,21 +200,65 @@ class dynamic_array_base(base_definitions):
         self.parse_connections()
         formatted_pattern = self.format_pattern_string(pattern)
         self.layout_instructions = {}
-        for row in formatted_pattern:
-            if row in self.layout_instructions: continue
-            self.layout_instructions[row] = self.optimize_row_diffusion(row)
+        for i in range(len(formatted_pattern)):
+            row = formatted_pattern[i]
+            next_row = formatted_pattern[i+1] if i < len(formatted_pattern)-1 else None
+            #if row in self.layout_instructions: continue
+            self.layout_instructions[i] = self.optimize_row_diffusion(row, next_row)
+        #print (f'self.layout_instructions: {self.layout_instructions}')
         ##################################################
         y_position = start_y
         sign = 1 if direction == 'up' else -1
         drowed_rows = []
-        for row in formatted_pattern:
-            row_ret = self.gen_row(row, model, w, l, dl, y_position, 'nsew', guard_ring_type)
+        guard_ring_trans = None
+        for i, row in enumerate(formatted_pattern):
+            row_ret = self.gen_row(row, i, model, w, l, dl, y_position, 'nsew', guard_ring_type, guard_ring_trans)
             drowed_rows.append(row_ret)
             y_position += sign* (row_ret['guard_ring_box'].height() + self.guardRingWidth)
+            if direction == 'up':
+                ring_start = row_ret['guard_ring_box'].top + self.guardRingWidth
+                guard_ring_trans = {
+                    'bottom' : ring_start,
+                    'top' : ring_start + row_ret['guard_ring_box'].height() 
+                }
+            else:
+                ring_start = row_ret['guard_ring_box'].bottom - self.guardRingWidth
+                guard_ring_trans = {
+                    'top' : ring_start,
+                    'bottom' : ring_start - row_ret['guard_ring_box'].height() 
+                }
         
         return drowed_rows
     
+    def gen_vertical_connections(self, rows, direction = 'up'):
+        for i, row in enumerate(rows):
+            if i == len(rows)-1: break
+            current_row = row['core_devices']
+            current_row_instructions = self.layout_instructions[row['row_index']]
+            print(f'processing instruction: {current_row_instructions}')
+            next_row = rows[i+1]['core_devices']
+            for j,inst in enumerate(current_row_instructions):
+                current_diff = inst['start_diffusion'][0]
+                next_connection_top = next_row[0]['source_contact'].top
+                next_connection_bottom = next_row[0]['source_contact'].bottom
+                connection_v_end = next_connection_bottom if direction == 'down' else next_connection_top
+                for current_diff in ['S', 'D']:
+                    if current_diff in inst['vertical_connection']:
+                        diff_index = 'sources' if current_diff == 'S' else 'drains'
+                        device = row['core_devices'][j]
+                        for diff_box in device[diff_index]:
+                            box_center = diff_box.center().x
+                            connection_v_start = diff_box.top if direction == 'down' else diff_box.bottom
+                            conn_box = pya.DBox(box_center - self.horizontal_connection_width/2, connection_v_end, box_center + self.horizontal_connection_width/2, connection_v_start)
+                            self.draw_rect(conn_box, self.vertical_layers[0], '')
+                            self.connect_boxes(conn_box, diff_box, self.vertical_layers[0], self.metal_layers[0])
+                            next_diff_box = pya.DBox(conn_box.left, next_connection_bottom, conn_box.right, next_connection_top)
+                            self.connect_boxes(conn_box, next_diff_box, self.vertical_layers[0], self.metal_layers[0])
+                
+
+    
     def gen_dynamic_array(self):
+        self.all_horizontal_connections = {}
         down_start_y = 0
         connections_spacing = self.connection_spacing + self.horizontal_connection_width + self.connection_spacing + self.horizontal_connection_width
         pmos_rows = []
@@ -209,6 +266,7 @@ class dynamic_array_base(base_definitions):
         if self.pmos_layout_pattern:
             pmos_rows = self.gen_array_by_model(self.pmos_layout_pattern, self.pmos, self.pmos_w, self.pmos_l, self.dummy_pmos_l, 'well')
             down_start_y = pmos_rows[0]['guard_ring_box'].bottom - self.guardRingWidth
+            self.gen_vertical_connections(pmos_rows)
         if any(char in self.nmos_layout_pattern for char in self.pmos_layout_pattern if char.isalpha()):
             self.show_warning("""Use different letters for the pmos and nmos layout patterns, otherwise the devices will be merged
                               Skipping drawing the nmos array""", False)
@@ -221,5 +279,26 @@ class dynamic_array_base(base_definitions):
             first_row_top_connections = (self.connection_spacing + self.horizontal_connection_width)*(len(first_row_nets) -1)
             down_start_y -= first_row_top_connections
             nmos_rows = self.gen_array_by_model(self.nmos_layout_pattern, self.nmos, self.nmos_w, self.nmos_l, self.dummy_nmos_l, 'sub','down', down_start_y)
+            self.gen_vertical_connections(nmos_rows, 'down')
+        
+        ### Global routing between same device rows and between the two types devices:
+        ### Let set it to left since it fixed positions
+        max_left = (pmos_rows + nmos_rows)[0]['guard_ring_box'].left - self.guardRingWidth - self.connection_spacing
+        current_left = max_left
+        for net,boxes in self.all_horizontal_connections.items():
+            if len(boxes) < 2: continue
+            box_bottom = min(boxes, key = lambda box: box.bottom).bottom
+            box_top = max(boxes, key = lambda box: box.top).top
+            print (f"box_bottom={box_bottom}, box_top={box_top}")
+            box_right = current_left
+            box_left = box_right - self.vertical_connection_width
+            vertical_box = pya.DBox(box_left, box_bottom, box_right, box_top)
+            self.draw_rect(vertical_box, self.vertical_layers[0], net)
+            current_left = box_left - self.connection_spacing
+            for box in boxes:
+                connection_box = pya.DBox(vertical_box.left, box.bottom, box.right, box.top)
+                self.draw_rect(connection_box, self.horizontal_layers[0], net)
+                self.connect_boxes(connection_box, vertical_box, self.vertical_layers[0], self.horizontal_layers[0])
+        
             
         return

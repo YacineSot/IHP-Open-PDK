@@ -233,10 +233,11 @@ class base_definitions():
         else:
             return 'D' if start_term == 'S' else 'S'
 
-    def optimize_row_diffusion(self, row_string):
+    def optimize_row_diffusion(self, row_string, next_row_string=None):
         """
         Uses Dynamic Programming to find the optimal S/D orientation for each device
-        in the row to maximize diffusion merges.
+        in the row to maximize diffusion merges. Maps vertical connections as an 
+        array of arrays matching the next row's device indices.
         """
         # 1. Parse inputs
         term_to_net = self.term_to_net
@@ -309,13 +310,77 @@ class base_definitions():
                 'fingers': fingers,
                 'start_diffusion': start_term.replace("S", "Source").replace("D","Drain"),
                 'end_diffusion': end_term,
-                'merge_next': merge_next
+                'merge_next': merge_next,
+                'vertical_connection': []  # Will be filled in the next step
             }
             layout_instructions.append(instruction)
             if not merge_next and i < len(row) - 1:
                 self.show_warning(f"It is prefered to use even number of fingers to merge diffusions. \n {instruction} \n Horizontal spacing param will be applied")
+        # 5. Map Vertical Connections as a simple flat list
+        if next_row_string:
+            next_row_instructions = self.optimize_row_diffusion(next_row_string)
             
+            next_grid_diff = {}
+            next_grid_gate = {}
+            next_x = 0
+            unmerged_gap = 0 
+
+            # Map the next row's physical grid
+            for inst in next_row_instructions:
+                n_dev = inst['device']
+                n_fingers = inst['fingers']
+                n_start = 'S' if 'Source' in inst['start_diffusion'] else 'D'
+                
+                for f in range(n_fingers + 1):
+                    n_term = 'S' if (f % 2 == 0) == (n_start == 'S') else 'D'
+                    n_net = self.get_net(n_dev, n_term)
+                    next_grid_diff[next_x + f] = n_net
+                
+                for f in range(n_fingers):
+                    n_net = self.get_net(n_dev, 'G')
+                    next_grid_gate[next_x + f] = n_net
+                    
+                next_x += n_fingers
+                if not inst['merge_next']:
+                    next_x += unmerged_gap
+
+            # Check current row
+            curr_x = 0
+            
+            for inst in layout_instructions:
+                dev = inst['device']
+                fingers = inst['fingers']
+                start_term = 'S' if 'Source' in inst['start_diffusion'] else 'D'
+                
+                vert_conns = set()
+                
+                # Check Diffusions
+                for f in range(fingers + 1):
+                    curr_term = 'S' if (f % 2 == 0) == (start_term == 'S') else 'D'
+                    curr_net = self.get_net(dev, curr_term)
+                    
+                    if (curr_x + f) in next_grid_diff:
+                        n_net = next_grid_diff[curr_x + f]
+                        if curr_net == n_net and curr_net is not None:
+                            vert_conns.add(curr_term) # Adds 'S' or 'D'
+
+                # Check Gates
+                for f in range(fingers):
+                    curr_net = self.get_net(dev, 'G')
+                    
+                    if (curr_x + f) in next_grid_gate:
+                        n_net = next_grid_gate[curr_x + f]
+                        if curr_net == n_net and curr_net is not None:
+                            vert_conns.add('G') # Adds 'G'
+                
+                # Attach to instruction as a simple array (e.g. ['S', 'D'] or ['G'])
+                inst['vertical_connection'] = list(vert_conns)
+                
+                curr_x += fingers
+                if not inst['merge_next']:
+                    curr_x += unmerged_gap
         return layout_instructions
+
     
     def show_warning(self, message, skippable=True):
         """
