@@ -178,6 +178,42 @@ class dynamic_array_base(base_definitions):
         
         self.gen_tap(ring_boundary_box,guard_ring_type , guard_ring_shape, self.guardRingWidth )
         
+        ## connect dummies
+        ## connect gates:
+        ## left dummies
+        gt_max_device = max(left_dummies, key= lambda d: d['gate_top_contact'].left)
+        gt_bottom_contact = left_dummies[0]['gate_bottom_contact']
+        gt_max_contact = max(gt_max_device['gates_t'], key = lambda d: d.left)
+        gt_connection_left = ring_boundary_box.left - self.guardRingWidth
+        gt_connection_box = pya.DBox(gt_connection_left, gt_max_contact.bottom, gt_max_contact.right, gt_max_contact.top)
+        gt_connection_bbox = pya.DBox(gt_connection_left, gt_bottom_contact.bottom, gt_max_contact.right, gt_bottom_contact.top)
+        
+        self.draw_rect(gt_connection_box, self.metal_layers[0],'')
+        self.draw_rect(gt_connection_bbox, self.metal_layers[0],'')
+        ## connect diffusions
+        for dummy in left_dummies:
+            for diff_box in dummy['sources']+dummy['drains']:
+                if diff_box.left > gt_connection_box.right: continue
+                conn_box = pya.DBox(diff_box.left, diff_box.bottom, diff_box.right, gt_connection_box.top)
+                self.draw_rect(conn_box, self.metal_layers[0],'')
+        # ## right dummies
+        gt_min_device = min(right_dummies, key= lambda d: d['gate_top_contact'].left)
+        gt_bottom_contact = right_dummies[0]['gate_bottom_contact']
+        gt_min_contact = min(gt_min_device['gates_t'], key = lambda d: d.right)
+        gt_connection_right = ring_boundary_box.right + self.guardRingWidth
+        gt_connection_box = pya.DBox(gt_min_contact.left, gt_min_contact.bottom, gt_connection_right, gt_min_contact.top)
+        gt_connection_bbox = pya.DBox(gt_min_contact.left, gt_bottom_contact.bottom, gt_connection_right, gt_bottom_contact.top)
+
+        self.draw_rect(gt_connection_box, self.metal_layers[0],'')
+        self.draw_rect(gt_connection_bbox, self.metal_layers[0],'')
+        ## connect diffusions
+        for dummy in right_dummies:
+            for diff_box in dummy['sources']+dummy['drains']:
+                if diff_box.right < gt_connection_box.left: continue
+                conn_box = pya.DBox(diff_box.left, diff_box.bottom, diff_box.right, gt_connection_box.top)
+                self.draw_rect(conn_box, self.metal_layers[0],'')
+        
+        
         for net, boxes in nets_horizontal_boxes.items():
             if net not in self.all_horizontal_connections:
                 self.all_horizontal_connections[net] = []
@@ -235,7 +271,7 @@ class dynamic_array_base(base_definitions):
             if i == len(rows)-1: break
             current_row = row['core_devices']
             current_row_instructions = self.layout_instructions[row['row_index']]
-            print(f'processing instruction: {current_row_instructions}')
+            #print(f'processing instruction: {current_row_instructions}')
             next_row = rows[i+1]['core_devices']
             for j,inst in enumerate(current_row_instructions):
                 current_diff = inst['start_diffusion'][0]
@@ -250,7 +286,7 @@ class dynamic_array_base(base_definitions):
                             box_center = diff_box.center().x
                             connection_v_start = diff_box.top if direction == 'down' else diff_box.bottom
                             conn_box = pya.DBox(box_center - self.horizontal_connection_width/2, connection_v_end, box_center + self.horizontal_connection_width/2, connection_v_start)
-                            self.draw_rect(conn_box, self.vertical_layers[0], '')
+                            self.draw_rect(conn_box, self.vertical_layers[0], self.get_net(device['name'], current_diff))
                             self.connect_boxes(conn_box, diff_box, self.vertical_layers[0], self.metal_layers[0])
                             next_diff_box = pya.DBox(conn_box.left, next_connection_bottom, conn_box.right, next_connection_top)
                             self.connect_boxes(conn_box, next_diff_box, self.vertical_layers[0], self.metal_layers[0])

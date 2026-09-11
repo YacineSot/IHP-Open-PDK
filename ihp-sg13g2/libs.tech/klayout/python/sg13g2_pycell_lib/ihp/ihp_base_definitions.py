@@ -258,4 +258,9 @@ class ihp_base_definitions(base_definitions):
         """
         ring_type = 'nwell' if tap_type == 'well' else 'psub'
         generate_guard_ring(self, ring_type, tap_shape, box.width(), box.height(), box.center().x, box.center().y, tap_width)
+        if ring_type == 'nwell':
+            self.draw_label(box, 'VDD', Layer('NWell'))
+        else:
+            label_box = pya.DBox(box.left, box.top, box.right, box.top+self.guardRingWidth)
+            self.draw_label(label_box, 'VSS', self.metal_layers[0])
     

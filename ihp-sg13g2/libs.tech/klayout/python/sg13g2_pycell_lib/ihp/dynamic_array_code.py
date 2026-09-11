@@ -51,6 +51,8 @@ class dynamic_array(dynamic_array_base, ihp_base_definitions, DeviceBase):
         specs('gates_connected_devices', '', 'Devices which gates connected together')
         specs('source_connected_devices', 'AB', 'Devices which sources connected together')
         specs('drain_connected_devices', '', 'Devices which drains connected together')
+        specs('drains_to_tap_devices', '', 'Devices which drains connected to tap')
+        specs('sources_to_tap_devices', '', 'Devices which sources connected to tap')
         specs('odd_vertical', True, 'Vertical metals odd')
         cls.additionnal_specs(cls, specs)
         
