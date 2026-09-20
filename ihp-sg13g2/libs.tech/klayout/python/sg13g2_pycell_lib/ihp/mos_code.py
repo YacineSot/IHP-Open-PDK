@@ -425,6 +425,8 @@ class mos_base(DeviceBase):
             dbCreateRect(self, poly_layer, gate_box)
             self.draw_label(text_layer, gate_box, self.model_type if not hasattr(self, 'label') else self.label)
             ## Drow gate contacts
+            self.gate_box_t = None
+            self.gate_box_b = None
             if self.gate_connection != 'none':
                 metal_layer = self.gate_metal.replace('M', 'Metal').replace('T','Top')
                 # additional_offset = 0.065 if l < 0.5 else 0
@@ -542,10 +544,10 @@ class mos_base(DeviceBase):
                 top += self.connection_spacing
                 bottom = self.gate_box_b.bottom if self.gate_box_b else self.gate_box.bottom
                 bottom -= self.connection_spacing
-                s_left = sources[0].getCenter().x - self.vertical_connection_width/2
-                s_right = sources[-1].getCenter().x + self.vertical_connection_width/2
-                d_left = drains[0].getCenter().x - self.vertical_connection_width/2
-                d_right = drains[-1].getCenter().x + self.vertical_connection_width/2
+                s_left = sources[0].center().x - self.vertical_connection_width/2
+                s_right = sources[-1].center().x + self.vertical_connection_width/2
+                d_left = drains[0].center().x - self.vertical_connection_width/2
+                d_right = drains[-1].center().x + self.vertical_connection_width/2
                 sources_connection_box = Box(s_left, top, s_right, top+self.horizontal_connection_width)
                 drains_connection_box = Box(d_left, top+self.horizontal_connection_width+self.connection_spacing, d_right,top+2*self.horizontal_connection_width+self.connection_spacing )
                 if self.distribute_connections:
@@ -557,7 +559,7 @@ class mos_base(DeviceBase):
                     self.draw_rect(self.horizontal_layers[0], drains_connection_box, other_diffusion)
                 self.drains_connection_box = drains_connection_box
                 for drain in drains:
-                    drain_center = drain.getCenter().x
+                    drain_center = drain.center().x
                     left = drain_center - self.vertical_connection_width/2
                     right = drain_center + self.vertical_connection_width/2
                     y0 = drain.top if self.distribute_connections else drain.bottom
@@ -567,7 +569,7 @@ class mos_base(DeviceBase):
                     if len(drains) > 1:
                         self.connectBoxes(con_box, drains_connection_box, self.horizontal_layers[0]._name, self.vertical_layers[0]._name)
                 for source in sources:
-                    source_center = source.getCenter().x
+                    source_center = source.center().x
                     left = source_center - self.vertical_connection_width/2
                     right = source_center + self.vertical_connection_width/2
                     con_box = Box(left, source.bottom, right, sources_connection_box.top)
@@ -665,5 +667,5 @@ class mos_base(DeviceBase):
         self.sources = sources if start_diffusion == 'Source' else drains
         self.drains = drains if start_diffusion == 'Source' else sources
         self.top = max(self.gate_box.top, self.gate_box_t.top if self.gate_box_t else -math.inf, self.sources_connection_box.top if hasattr(self, 'sources_connection_box') else -math.inf)
-        self.bottom = min(self.gate_box.bottom, self.gate_box_b.bottom if hasattr(self, 'gate_box_b') else math.inf, self.drains_connection_box.bottom if hasattr(self, 'drains_connection_box') else math.inf)               
+        self.bottom = min(self.gate_box.bottom, self.gate_box_b.bottom if self.gate_box_b else math.inf, self.drains_connection_box.bottom if hasattr(self, 'drains_connection_box') else math.inf)               
         return self._getCurrentCellContext()

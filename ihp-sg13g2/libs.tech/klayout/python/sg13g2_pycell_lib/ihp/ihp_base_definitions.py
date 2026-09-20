@@ -257,7 +257,7 @@ class ihp_base_definitions(base_definitions):
         tap_name: name of the tap (to display over the gate)
         """
         ring_type = 'nwell' if tap_type == 'well' else 'psub'
-        generate_guard_ring(self, ring_type, tap_shape, box.width(), box.height(), box.center().x, box.center().y, tap_width)
+        generate_guard_ring(self, ring_type, tap_shape, box.width(), box.height(), box.center().x, box.center().y, tap_width, use_nbulay=False)
         if ring_type == 'nwell':
             self.draw_label(box, 'VDD', Layer('NWell'))
         else:

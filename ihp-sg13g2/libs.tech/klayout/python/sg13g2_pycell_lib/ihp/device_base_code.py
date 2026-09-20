@@ -60,9 +60,11 @@ class DeviceBase(DloGen):
         
         cls.add_separation(self = cls, specs = specs,separator= "Guard Ring Settings")
         specs('guardRingType', cls.default_ring, 'Guard Ring Type', ChoiceConstraint(choices))
-        specs('guardRingDistance', cls.default_distance, 'Guard Ring Distance')
+        specs('guardRingDistance_X', cls.default_distance, 'Guard Ring Horizontal Distance')
+        specs('guardRingDistance_Y', cls.default_distance, 'Guard Ring Vertical Distance')
         specs('guardRingWidth', '0.3u', 'Guard Ring Width')
         specs('distribute_contacts', False, 'Contacts Follows Active')
+        specs('use_nbulay', False, "Use Deep Nwell for Pmos devices")
         cls.add_separation(self=cls, specs=specs, separator=" ")
         specs('north', def_tap['north'], 'Include North Side')
         specs('south', def_tap['south'], 'Include South Side')
@@ -77,10 +79,12 @@ class DeviceBase(DloGen):
         self.cells = 1  
         if 'guardRingType' in params and params['guardRingType'] != 'none':
             self.guardRingType     = GuardRingType(params['guardRingType'])
-            self.guardRingDistance = Numeric(params['guardRingDistance'])*1e6
+            self.guardRingDistance_X = Numeric(params['guardRingDistance_X'])*1e6
+            self.guardRingDistance_Y = Numeric(params['guardRingDistance_Y'])*1e6
             self.guardRingShape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
             self.guardRingWidth = Numeric(params['guardRingWidth'])*1e6
             self.distribute_contacts = params['distribute_contacts'] if 'distribute_contacts' in params else False
+            self.use_nbulay = params['use_nbulay'] if 'use_nbulay' in params else False
         #self.guardRingArray = params['guardRingArray'] == 'yes'
             # if hasattr(self, 'is_array') and self.is_array:
             #     self.cells = int(params['cells'])
@@ -228,8 +232,8 @@ class DeviceBase(DloGen):
                 max_right = max(max_right, bbox.right)
                 max_top = max(max_top, bbox.top)
 
-            w = max_right - min_left + self.guardRingDistance * 2.0
-            h = max_top - min_bottom + self.guardRingDistance * 2.0
+            w = max_right - min_left + self.guardRingDistance_X * 2.0
+            h = max_top - min_bottom + self.guardRingDistance_Y * 2.0
 
             x_center = min_left + (max_right - min_left) / 2.0
             y_center = min_bottom + (max_top - min_bottom) / 2.0
@@ -242,7 +246,8 @@ class DeviceBase(DloGen):
                                 x_center=x_center,
                                 y_center=y_center,
                                 t=self.guardRingWidth,
-                                distribute_contacts=self.distribute_contacts)
+                                distribute_contacts=self.distribute_contacts,
+                                use_nbulay=self.use_nbulay)
     
     def genArray(self):
         self.genDeviceLayout()

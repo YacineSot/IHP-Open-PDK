@@ -1,6 +1,6 @@
 
 from cni.dlo import *
-from .dynamic_array_base import dynamic_array_base
+from .dynamic_pcell_base import dynamic_pcell_base
 from .ihp_base_definitions import ihp_base_definitions
 from .device_base_code import DeviceBase
 from .nmos_code import nmos
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 
 
-class dynamic_array(dynamic_array_base, ihp_base_definitions, DeviceBase):
+class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
     @classmethod
     def defineParamSpecs(cls, specs):
         techparams = specs.tech.getTechParams()

@@ -5,7 +5,7 @@ import pya
 from .base_definitions import base_definitions
 
 
-class dynamic_array_base(base_definitions):
+class dynamic_pcell_base(base_definitions):
     
     def get_row_dimentions(self, pattern, index, model, w, l, dl):
         ## Calculate Dummies dimentions
@@ -41,7 +41,7 @@ class dynamic_array_base(base_definitions):
         }
         
     
-    def gen_row(self, pattern, index, model, w, l, dl, y_position, guard_ring_shape, guard_ring_type, guard_ring_trans=None):
+    def gen_row(self, pattern, index, model, w, l, dl, y_position, guard_ring_shape, guard_ring_type, guard_ring_trans=None, connection_dir='up'):
         """
         STEPS: 
         Generate left dummies (like that the origin will be in the bottom left of the first dummy)
@@ -110,23 +110,26 @@ class dynamic_array_base(base_definitions):
         nets_device_boxes = defaultdict(list)
         current_src_net_y = top + self.vertical_spacing
         current_drn_net_y = bottom - self.vertical_spacing
+        current_net_y = top + self.vertical_spacing if connection_dir == 'up' else bottom - self.vertical_spacing
+        dir_sign = 1 if connection_dir == 'up' else -1
         for i, core_device in enumerate(core_devices):
             source_net = self.get_net(core_device['name'], 'S')
             drain_net = self.get_net(core_device['name'], 'D')
             gate_net = self.get_net(core_device['name'], 'G')
             nets_device_boxes[source_net] += core_device['sources']
             nets_device_boxes[drain_net] += core_device['drains']
-            nets_device_boxes[gate_net] += core_device['gates_t']
+            nets_device_boxes[gate_net] += core_device['gates_t'] if connection_dir == 'up' else core_device['gates_b']
             #print(f"pattern = {pattern},current_row[{i}]['vertical_connection']: {current_row[i]['vertical_connection']}")
         for net in nets_device_boxes:
             if 'SRC' in net and 'S' not in current_row[i]['vertical_connection']:
-                net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_src_net_y, max(box.right for box in nets_device_boxes[net]), current_src_net_y + self.vertical_connection_width)
+                net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_net_y, max(box.right for box in nets_device_boxes[net]), current_net_y + self.vertical_connection_width)
                 nets_horizontal_boxes[net] = net_box
                 self.draw_rect(net_box, self.horizontal_layers[0], net)
-                current_src_net_y += self.vertical_connection_width + self.connection_spacing
+                current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
                 for dev_src_box in nets_device_boxes[net]:
+                    boundary_box = self.get_boundary_box(dev_src_box, net_box)
                     conn_center = dev_src_box.center().x
-                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_src_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
+                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, boundary_box.bottom, conn_center + self.horizontal_connection_width/2, boundary_box.top)
                     self.draw_rect(conn_box, self.vertical_layers[0], net)
                     if self.metal_layers[0] != self.vertical_layers[0]:
                         self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.metal_layers[0])
@@ -134,35 +137,39 @@ class dynamic_array_base(base_definitions):
                     
             if 'DRN' in net and 'D' not in current_row[i]['vertical_connection']:
                 if net not in nets_horizontal_boxes:
-                    net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_drn_net_y - self.vertical_connection_width, max(box.right for box in nets_device_boxes[net]), current_drn_net_y)
+                    net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_net_y, max(box.right for box in nets_device_boxes[net]), current_net_y + self.vertical_connection_width)
                     nets_horizontal_boxes[net] = net_box
                     self.draw_rect(net_box, self.horizontal_layers[0], net)
-                    current_drn_net_y -= self.vertical_connection_width + self.connection_spacing
+                    current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
                 for dev_drn_box in nets_device_boxes[net]:
+                    boundary_box = self.get_boundary_box(dev_drn_box, net_box)
                     conn_center = dev_drn_box.center().x
-                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, net_box.bottom, conn_center + self.horizontal_connection_width/2, dev_drn_box.top)
+                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, boundary_box.bottom, conn_center + self.horizontal_connection_width/2, boundary_box.top)
                     self.draw_rect(conn_box, self.vertical_layers[0], net)
                     if self.metal_layers[0] != self.vertical_layers[0]:
                         self.connect_boxes(conn_box, dev_drn_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
             if 'GATE' in net:
                 if net not in nets_horizontal_boxes:
-                    net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_src_net_y, max(box.right for box in nets_device_boxes[net]), current_src_net_y + self.vertical_connection_width)
+                    net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_net_y, max(box.right for box in nets_device_boxes[net]), current_net_y + self.vertical_connection_width)
                     nets_horizontal_boxes[net] = net_box
                     self.draw_rect(net_box, self.horizontal_layers[0], net)
-                    current_src_net_y += self.vertical_connection_width + self.connection_spacing
+                    current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
                 for dev_gate_box in nets_device_boxes[net]:
+                    boundary_box = self.get_boundary_box(dev_gate_box, net_box)
                     conn_center = dev_gate_box.center().x
-                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_gate_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
+                    # conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_gate_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
+                    conn_box = pya.DBox(dev_gate_box.left, boundary_box.bottom, dev_gate_box.right, boundary_box.top)
                     self.draw_rect(conn_box, self.vertical_layers[0], net)
                     if self.metal_layers[0] != self.vertical_layers[0]:
                         self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.metal_layers[0])
                     self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
         
+        
         top = device['gate_top_contact'].top if device['gate_top_contact'] else device['gate'].top
-        top = max(top, max(box.top for box in nets_horizontal_boxes.values()))
+        # top = max(top, max(box.top for box in nets_horizontal_boxes.values()))
         bottom = device['gate_bottom_contact'].bottom if device['gate_bottom_contact'] else device['gate'].bottom
-        bottom = min(bottom, min(box.bottom for box in nets_horizontal_boxes.values()))
+        # bottom = min(bottom, min(box.bottom for box in nets_horizontal_boxes.values()))
         ## fixing height
         row_dimentions["Height"] = top-bottom
         ## Adding connecitions offset:
@@ -174,9 +181,11 @@ class dynamic_array_base(base_definitions):
         row_dimentions["Full_Width"] = right - left
         guard_ring_top = top + self.vertical_spacing if not guard_ring_trans else guard_ring_trans['top']
         guard_ring_bottom = bottom - self.vertical_spacing if not guard_ring_trans else guard_ring_trans['bottom']
-        ring_boundary_box = pya.DBox(left-self.guardRingDistance, guard_ring_bottom, right + self.guardRingDistance, guard_ring_top)
-        
-        self.gen_tap(ring_boundary_box,guard_ring_type , guard_ring_shape, self.guardRingWidth )
+        ring_boundary_box = pya.DBox(left, bottom, right, top)
+        if self.place_taps:
+            ring_boundary_box = pya.DBox(left-self.guardRingDistance_X, guard_ring_bottom, right + self.guardRingDistance_X, guard_ring_top)
+            
+            self.gen_tap(ring_boundary_box,guard_ring_type , guard_ring_shape, self.guardRingWidth )
         
         ## connect dummies
         ## connect gates:
@@ -218,6 +227,21 @@ class dynamic_array_base(base_definitions):
             if net not in self.all_horizontal_connections:
                 self.all_horizontal_connections[net] = []
             self.all_horizontal_connections[net] += [boxes]
+        
+        if connection_dir == 'up':
+            self.ntap = {
+                        'max_top' :  max(self.ntap['max_top'], top),
+                        'min_bottom' :  min(self.ntap['min_bottom'], bottom),
+                        'min_left' :  min(self.ntap['min_left'], left),
+                        'max_right' :  max(self.ntap['max_right'], right),
+                    }
+        else:
+            self.ptap = {
+                        'max_top' :  max(self.ptap['max_top'], top),
+                        'min_bottom' :  min(self.ptap['min_bottom'], bottom),
+                        'min_left' :  min(self.ptap['min_left'], left),
+                        'max_right' :  max(self.ptap['max_right'], right),
+                    }
         return {
             "row_pattern": pattern,
             "row_index": index,
@@ -248,7 +272,7 @@ class dynamic_array_base(base_definitions):
         drowed_rows = []
         guard_ring_trans = None
         for i, row in enumerate(formatted_pattern):
-            row_ret = self.gen_row(row, i, model, w, l, dl, y_position, 'nsew', guard_ring_type, guard_ring_trans)
+            row_ret = self.gen_row(row, i, model, w, l, dl, y_position, 'nsew', guard_ring_type, guard_ring_trans, direction)
             drowed_rows.append(row_ret)
             y_position += sign* (row_ret['guard_ring_box'].height() + self.guardRingWidth)
             if direction == 'up':
@@ -294,6 +318,18 @@ class dynamic_array_base(base_definitions):
 
     
     def gen_dynamic_array(self):
+        self.ptap = {
+            'max_top' :  float('-inf'),
+            'min_bottom' :  float('inf'),
+            'min_left' :  float('inf'),
+            'max_right' :  float('-inf'),
+        }
+        self.ntap = {
+            'max_top' :  float('-inf'),
+            'min_bottom' :  float('inf'),
+            'min_left' :  float('inf'),
+            'max_right' :  float('-inf'),
+        }
         self.all_horizontal_connections = {}
         down_start_y = 0
         connections_spacing = self.connection_spacing + self.horizontal_connection_width + self.connection_spacing + self.horizontal_connection_width
@@ -336,5 +372,12 @@ class dynamic_array_base(base_definitions):
                 self.draw_rect(connection_box, self.horizontal_layers[0], net)
                 self.connect_boxes(connection_box, vertical_box, self.vertical_layers[0], self.horizontal_layers[0])
         
+        if not self.place_taps:
+            ## draw all around nwell guard ring
+            tap_bbox = pya.DBox(self.ntap['min_left'], self.ntap['min_bottom'], self.ntap['max_right'], self.ntap['max_top']).enlarged(self.guardRingDistance_X, self.guardRingDistance_Y)
+            self.gen_tap(tap_bbox, 'well', 'nswe', self.guardRingWidth, 'well')
+            ## draw all around pwell guard ring
+            tap_bbox = pya.DBox(self.ptap['min_left'], self.ptap['min_bottom'], self.ptap['max_right'], self.ptap['max_top']).enlarged(self.guardRingDistance_X, self.guardRingDistance_Y)
+            self.gen_tap(tap_bbox, 'sub', 'nswe', self.guardRingWidth, 'sub')
             
         return

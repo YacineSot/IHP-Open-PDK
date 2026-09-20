@@ -110,6 +110,8 @@ class base_definitions():
         """
         raise NotImplementedError()
         
+    def get_boundary_box(self, box1, box2):
+        return box1 + box2
     
     @staticmethod
     def format_one_line_string(input_str):

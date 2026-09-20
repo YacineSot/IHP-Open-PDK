@@ -75,7 +75,8 @@ def generate_guard_ring(dlo_gen: DloGen,
                         x_center: float,
                         y_center: float,
                         t: float = 0.3,
-                        distribute_contacts = False):
+                        distribute_contacts = False,
+                        use_nbulay = False):
     dlo_gen.grid = dlo_gen.tech.getGridResolution()
     techparams = dlo_gen.tech.getTechParams()
 
@@ -89,7 +90,7 @@ def generate_guard_ring(dlo_gen: DloGen,
     nwell = Layer('NWell', 'drawing')
     nbulay = None
     try:
-        nbulay = Layer('nBuLay')
+        nbulay = Layer('nBuLay') if use_nbulay else None
     except:
         print("You are on cmos5l technology")
     activ = Layer('Activ', 'drawing')
@@ -283,11 +284,12 @@ def generate_guard_ring(dlo_gen: DloGen,
 class guard_ring(DloGen):
     @classmethod
     def defineParamSpecs(cls, specs):
-        specs('type', 'ntap', 'Guard Ring Type', ChoiceConstraint(['nwell', 'psub', 'nwell_cmos']))  # 'dnwell'
+        specs('type', 'ntap', 'Guard Ring Type', ChoiceConstraint(['nwell', 'psub']))  # 'dnwell'
         specs('w', '3.05u', 'Box Width')
         specs('h', '3.05u', 'Box Height')
         specs('t', '0.3u', 'Tap Width')
         specs('distribute_contacts', False, 'Contacts Follows Active')
+        specs('use_nbulay', False, 'Use Deep Nwell for Pmos devices')
         specs('_', '-----Separator-----', '-------------', ReadOnlyConstraint())
         specs('north', True, 'Include North Side')
         specs('south', True, 'Include South Side')
@@ -303,6 +305,7 @@ class guard_ring(DloGen):
         self.t = Numeric(params['t'])*1e6
         self.shape = ''.join(side[0] for side in ['north', 'south', 'west', 'east'] if params.get(side))
         self.distribute_contacts = params['distribute_contacts']
+        self.use_nbulay = params['use_nbulay']
 
     def genLayout(self):
         generate_guard_ring(dlo_gen=self,
@@ -313,4 +316,5 @@ class guard_ring(DloGen):
                             x_center=0.0,
                             y_center=0.0,
                             t=self.t,
-                            distribute_contacts=self.distribute_contacts)
+                            distribute_contacts=self.distribute_contacts,
+                            use_nbulay=self.use_nbulay)

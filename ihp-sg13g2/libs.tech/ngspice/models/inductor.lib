@@ -1,0 +1,36 @@
+* ====================================================================
+* Accurate IHP SG13G2 TopMetal2 Octagonal Inductor Parametric Subcircuit
+* Formulas matched 1:1 with IHP PDK KLayout TCL implementation
+* ====================================================================
+.subckt inductor port1 port2 bulk params: w=10u s=2u d=50u nr_r=3.5
+
+* --- 1:1 Native PDK Equations Extracted from proc inductor_L ---
+
+* 1. Fill ratio calculation: ro = (nr*(w+s)-s) / (d+nr*(w+s)-s)
+.param ro = '(nr_r * (w + s) - s) / (d + nr_r * (w + s) - s)'
+
+* 2. Permeability constant: mu = 3.1416 * 4 * 1e-7
+.param mu_pdk = '3.1416 * 4 * 1e-7'
+
+* 3. Inductance calculation (lEstim):
+* tmp = mu*0.5*1.07*nr*nr*(d+nr*(w+s)-s)*(log(2.29/ro)+0.19*ro*ro)
+.param L_val = 'mu_pdk * 0.5 * 1.07 * (nr_r**2) * (d + nr_r * (w + s) - s) * (ln(2.29 / ro) + 0.19 * (ro**2))'
+
+* 4. Resistance calculation (rEstim):
+* tmp = (nr*(d+w+(nr-1)*(s+w))*3.314+60e-6)/w*0.01
+.param R_val = '((nr_r * (d + w + (nr_r - 1) * (s + w)) * 3.314 + 60e-6) / w) * 0.01'
+
+* --- Real PDK Parasitic Capacitance (From Process Specs Table) ---
+* Total structural length parameter used for area sizing
+.param L_structural = '3.14159 * nr_r * ((d + (d + nr_r * (w + s) - s)) / 2)'
+.param C_area       = 13a
+.param C_val        = 'C_area * L_structural * w'
+
+* --- RLC Topology Network ---
+L1       port1  int_1  'L_val'
+R_series int_1  port2  'R_val'
+C_para1  port1  bulk    'C_val / 2'
+C_para2  port2  bulk    'C_val / 2'
+
+.ends inductor
+
