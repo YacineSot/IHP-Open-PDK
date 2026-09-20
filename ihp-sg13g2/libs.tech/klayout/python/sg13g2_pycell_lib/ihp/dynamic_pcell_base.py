@@ -120,50 +120,51 @@ class dynamic_pcell_base(base_definitions):
             nets_device_boxes[drain_net] += core_device['drains']
             nets_device_boxes[gate_net] += core_device['gates_t'] if connection_dir == 'up' else core_device['gates_b']
             #print(f"pattern = {pattern},current_row[{i}]['vertical_connection']: {current_row[i]['vertical_connection']}")
-        for net in nets_device_boxes:
-            if ('SRC' in net and 'S' not in current_row[i]['vertical_connection']) or ('DRN' in net and 'D' not in current_row[i]['vertical_connection']):
-                net_box = pya.DBox(min(box.center().x for box in nets_device_boxes[net]) - self.vertical_connection_width/2, current_net_y, max(box.center().x for box in nets_device_boxes[net]) + self.vertical_connection_width/2, current_net_y + self.vertical_connection_width*dir_sign)
-                nets_horizontal_boxes[net] = net_box
-                self.draw_rect(net_box, self.horizontal_layers[0], net)
-                current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
-                for dev_src_box in nets_device_boxes[net]:
-                    boundary_box = self.get_boundary_box(dev_src_box, net_box)
-                    conn_center = dev_src_box.center().x
-                    conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, boundary_box.bottom, conn_center + self.horizontal_connection_width/2, boundary_box.top)
-                    self.draw_rect(conn_box, self.vertical_layers[0], net)
-                    if self.metal_layers[0] != self.vertical_layers[0]:
-                        self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.metal_layers[0])
-                    self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
-                    
-            # if 'DRN' in net and 'D' not in current_row[i]['vertical_connection']:
-            #     if net not in nets_horizontal_boxes:
-            #         net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_net_y, max(box.right for box in nets_device_boxes[net]), current_net_y + self.vertical_connection_width)
-            #         nets_horizontal_boxes[net] = net_box
-            #         self.draw_rect(net_box, self.horizontal_layers[0], net)
-            #         current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
-            #     for dev_drn_box in nets_device_boxes[net]:
-            #         boundary_box = self.get_boundary_box(dev_drn_box, net_box)
-            #         conn_center = dev_drn_box.center().x
-            #         conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, boundary_box.bottom, conn_center + self.horizontal_connection_width/2, boundary_box.top)
-            #         self.draw_rect(conn_box, self.vertical_layers[0], net)
-            #         if self.metal_layers[0] != self.vertical_layers[0]:
-            #             self.connect_boxes(conn_box, dev_drn_box, self.vertical_layers[0], self.metal_layers[0])
-            #         self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
-            if 'GATE' in net:
-                if net not in nets_horizontal_boxes:
-                    net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_net_y, max(box.right for box in nets_device_boxes[net]), current_net_y + self.vertical_connection_width*dir_sign)
+        if self.draw_horizontal_connections:
+            for net in nets_device_boxes:
+                if ('SRC' in net and 'S' not in current_row[i]['vertical_connection']) or ('DRN' in net and 'D' not in current_row[i]['vertical_connection']):
+                    net_box = pya.DBox(min(box.center().x for box in nets_device_boxes[net]) - self.vertical_connection_width/2, current_net_y, max(box.center().x for box in nets_device_boxes[net]) + self.vertical_connection_width/2, current_net_y + self.vertical_connection_width*dir_sign)
                     nets_horizontal_boxes[net] = net_box
                     self.draw_rect(net_box, self.horizontal_layers[0], net)
                     current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
-                for dev_gate_box in nets_device_boxes[net]:
-                    boundary_box = self.get_boundary_box(dev_gate_box, net_box)
-                    conn_center = dev_gate_box.center().x
-                    # conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_gate_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
-                    conn_box = pya.DBox(dev_gate_box.left, boundary_box.bottom, dev_gate_box.right, boundary_box.top)
-                    self.draw_rect(conn_box, self.vertical_layers[0], net)
-                    if self.metal_layers[0] != self.vertical_layers[0]:
-                        self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.metal_layers[0])
-                    self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
+                    for dev_src_box in nets_device_boxes[net]:
+                        boundary_box = self.get_boundary_box(dev_src_box, net_box)
+                        conn_center = dev_src_box.center().x
+                        conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, boundary_box.bottom, conn_center + self.horizontal_connection_width/2, boundary_box.top)
+                        self.draw_rect(conn_box, self.vertical_layers[0], net)
+                        if self.metal_layers[0] != self.vertical_layers[0]:
+                            self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.metal_layers[0])
+                        self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
+                        
+                # if 'DRN' in net and 'D' not in current_row[i]['vertical_connection']:
+                #     if net not in nets_horizontal_boxes:
+                #         net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_net_y, max(box.right for box in nets_device_boxes[net]), current_net_y + self.vertical_connection_width)
+                #         nets_horizontal_boxes[net] = net_box
+                #         self.draw_rect(net_box, self.horizontal_layers[0], net)
+                #         current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
+                #     for dev_drn_box in nets_device_boxes[net]:
+                #         boundary_box = self.get_boundary_box(dev_drn_box, net_box)
+                #         conn_center = dev_drn_box.center().x
+                #         conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, boundary_box.bottom, conn_center + self.horizontal_connection_width/2, boundary_box.top)
+                #         self.draw_rect(conn_box, self.vertical_layers[0], net)
+                #         if self.metal_layers[0] != self.vertical_layers[0]:
+                #             self.connect_boxes(conn_box, dev_drn_box, self.vertical_layers[0], self.metal_layers[0])
+                #         self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
+                if 'GATE' in net:
+                    if net not in nets_horizontal_boxes:
+                        net_box = pya.DBox(min(box.left for box in nets_device_boxes[net]), current_net_y, max(box.right for box in nets_device_boxes[net]), current_net_y + self.vertical_connection_width*dir_sign)
+                        nets_horizontal_boxes[net] = net_box
+                        self.draw_rect(net_box, self.horizontal_layers[0], net)
+                        current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
+                    for dev_gate_box in nets_device_boxes[net]:
+                        boundary_box = self.get_boundary_box(dev_gate_box, net_box)
+                        conn_center = dev_gate_box.center().x
+                        # conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_gate_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
+                        conn_box = pya.DBox(dev_gate_box.left, boundary_box.bottom, dev_gate_box.right, boundary_box.top)
+                        self.draw_rect(conn_box, self.vertical_layers[0], net)
+                        if self.metal_layers[0] != self.vertical_layers[0]:
+                            self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.metal_layers[0])
+                        self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
         
         
         top = device['gate_top_contact'].top if device['gate_top_contact'] else device['gate'].top
@@ -292,6 +293,7 @@ class dynamic_pcell_base(base_definitions):
         return drowed_rows
     
     def gen_vertical_connections(self, rows, direction = 'up'):
+        if not self.draw_vertical_connections: return;
         for i, row in enumerate(rows):
             if i == len(rows)-1: break
             current_row = row['core_devices']
@@ -362,20 +364,21 @@ class dynamic_pcell_base(base_definitions):
         ### Let set it to left since it fixed positions
         max_left = (pmos_rows + nmos_rows)[0]['guard_ring_box'].left - self.guardRingWidth - self.connection_spacing
         current_left = max_left
-        for net,boxes in self.all_horizontal_connections.items():
-            if len(boxes) < 2: continue
-            box_bottom = min(boxes, key = lambda box: box.bottom).bottom
-            box_top = max(boxes, key = lambda box: box.top).top
-            print (f"box_bottom={box_bottom}, box_top={box_top}")
-            box_right = current_left
-            box_left = box_right - self.vertical_connection_width
-            vertical_box = pya.DBox(box_left, box_bottom, box_right, box_top)
-            self.draw_rect(vertical_box, self.vertical_layers[0], net)
-            current_left = box_left - self.connection_spacing
-            for box in boxes:
-                connection_box = pya.DBox(vertical_box.left, box.bottom, box.right, box.top)
-                self.draw_rect(connection_box, self.horizontal_layers[0], net)
-                self.connect_boxes(connection_box, vertical_box, self.vertical_layers[0], self.horizontal_layers[0])
+        if self.draw_vertical_connections and self.draw_horizontal_connections:
+            for net,boxes in self.all_horizontal_connections.items():
+                if len(boxes) < 2: continue
+                box_bottom = min(boxes, key = lambda box: box.bottom).bottom
+                box_top = max(boxes, key = lambda box: box.top).top
+                print (f"box_bottom={box_bottom}, box_top={box_top}")
+                box_right = current_left
+                box_left = box_right - self.vertical_connection_width
+                vertical_box = pya.DBox(box_left, box_bottom, box_right, box_top)
+                self.draw_rect(vertical_box, self.vertical_layers[0], net)
+                current_left = box_left - self.connection_spacing
+                for box in boxes:
+                    connection_box = pya.DBox(vertical_box.left, box.bottom, box.right, box.top)
+                    self.draw_rect(connection_box, self.horizontal_layers[0], net)
+                    self.connect_boxes(connection_box, vertical_box, self.vertical_layers[0], self.horizontal_layers[0])
         
         if not self.place_taps:
             ## draw all around nwell guard ring
