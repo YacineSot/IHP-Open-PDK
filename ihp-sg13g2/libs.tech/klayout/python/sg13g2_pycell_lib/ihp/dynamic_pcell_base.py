@@ -181,9 +181,11 @@ class dynamic_pcell_base(base_definitions):
         row_dimentions["Full_Width"] = right - left
         guard_ring_top = top + self.vertical_spacing if not guard_ring_trans else guard_ring_trans['top']
         guard_ring_bottom = bottom - self.vertical_spacing if not guard_ring_trans else guard_ring_trans['bottom']
+        guard_ring_left = left-self.guardRingDistance_X
+        guard_ring_right = right + self.guardRingDistance_X
         ring_boundary_box = pya.DBox(left, bottom, right, top)
         if self.place_taps:
-            ring_boundary_box = pya.DBox(left-self.guardRingDistance_X, guard_ring_bottom, right + self.guardRingDistance_X, guard_ring_top)
+            ring_boundary_box = pya.DBox(guard_ring_left, guard_ring_bottom, guard_ring_right, guard_ring_top)
             
             self.gen_tap(ring_boundary_box,guard_ring_type , guard_ring_shape, self.guardRingWidth )
         
@@ -193,7 +195,7 @@ class dynamic_pcell_base(base_definitions):
         gt_max_device = max(left_dummies, key= lambda d: d['gate_top_contact'].left)
         gt_bottom_contact = left_dummies[0]['gate_bottom_contact']
         gt_max_contact = max(gt_max_device['gates_t'], key = lambda d: d.left)
-        gt_connection_left = ring_boundary_box.left - self.guardRingWidth
+        gt_connection_left = guard_ring_left - self.guardRingWidth
         gt_connection_box = pya.DBox(gt_connection_left, gt_max_contact.bottom, gt_max_contact.right, gt_max_contact.top)
         gt_connection_bbox = pya.DBox(gt_connection_left, gt_bottom_contact.bottom, gt_max_contact.right, gt_bottom_contact.top)
         
@@ -209,7 +211,7 @@ class dynamic_pcell_base(base_definitions):
         gt_min_device = min(right_dummies, key= lambda d: d['gate_top_contact'].left)
         gt_bottom_contact = right_dummies[0]['gate_bottom_contact']
         gt_min_contact = min(gt_min_device['gates_t'], key = lambda d: d.right)
-        gt_connection_right = ring_boundary_box.right + self.guardRingWidth
+        gt_connection_right = guard_ring_right + self.guardRingWidth
         gt_connection_box = pya.DBox(gt_min_contact.left, gt_min_contact.bottom, gt_connection_right, gt_min_contact.top)
         gt_connection_bbox = pya.DBox(gt_min_contact.left, gt_bottom_contact.bottom, gt_connection_right, gt_bottom_contact.top)
 
@@ -257,7 +259,6 @@ class dynamic_pcell_base(base_definitions):
     
     def gen_array_by_model(self,pattern, model,w, l, dl, guard_ring_type ,direction = 'up', start_y=0):
         ## Preprocessing, fix the layout pattern strings
-        self.parse_connections()
         formatted_pattern = self.format_pattern_string(pattern)
         self.layout_instructions = {}
         for i in range(len(formatted_pattern)):
@@ -318,6 +319,9 @@ class dynamic_pcell_base(base_definitions):
 
     
     def gen_dynamic_array(self):
+        if not self.pmos_layout_pattern and not self.nmos_layout_pattern:
+            self.draw_rect(pya.DBox(0,0,7,5), self.metal_layers[0], "You forgot to put the pattern")
+            return
         self.ptap = {
             'max_top' :  float('-inf'),
             'min_bottom' :  float('inf'),
@@ -330,6 +334,7 @@ class dynamic_pcell_base(base_definitions):
             'min_left' :  float('inf'),
             'max_right' :  float('-inf'),
         }
+        self.parse_connections()
         self.all_horizontal_connections = {}
         down_start_y = 0
         connections_spacing = self.connection_spacing + self.horizontal_connection_width + self.connection_spacing + self.horizontal_connection_width
@@ -374,10 +379,13 @@ class dynamic_pcell_base(base_definitions):
         
         if not self.place_taps:
             ## draw all around nwell guard ring
-            tap_bbox = pya.DBox(self.ntap['min_left'], self.ntap['min_bottom'], self.ntap['max_right'], self.ntap['max_top']).enlarged(self.guardRingDistance_X, self.guardRingDistance_Y)
-            self.gen_tap(tap_bbox, 'well', 'nswe', self.guardRingWidth, 'well')
+            if self.pmos_layout_pattern:
+                tap_bbox = pya.DBox(self.ntap['min_left'], self.ntap['min_bottom'], self.ntap['max_right'], self.ntap['max_top']).enlarged(self.guardRingDistance_X, self.guardRingDistance_Y)
+                self.gen_tap(tap_bbox, 'well', 'nswe', self.guardRingWidth, 'well')
             ## draw all around pwell guard ring
-            tap_bbox = pya.DBox(self.ptap['min_left'], self.ptap['min_bottom'], self.ptap['max_right'], self.ptap['max_top']).enlarged(self.guardRingDistance_X, self.guardRingDistance_Y)
-            self.gen_tap(tap_bbox, 'sub', 'nswe', self.guardRingWidth, 'sub')
+            if self.nmos_layout_pattern:
+                tap_bbox = pya.DBox(self.ptap['min_left'], self.ptap['min_bottom'], self.ptap['max_right'], self.ptap['max_top']).enlarged(self.guardRingDistance_X, self.guardRingDistance_Y)
+                self.gen_tap(tap_bbox, 'sub', 'nswe', self.guardRingWidth, 'sub')
+        
             
         return
