@@ -1,0 +1,7 @@
+{
+    "layout_pattern": "Format: rows separated by spaces. \nPrefix a letter with a number to repeat it (4A -> AAAA). Append *N to repeat the whole row N times. \nExample: 4A3B2C*3 AABBCC -> AAAABBBCC drawn 3 times, then AABBCC.",
+    "gate_connected_to": "Specify the device letter whose diffusion source/drain (S/D) is connected to its own gate. \nThe gate of this device is linked to its S/D, so enter the letter of that device.",
+    "diff_connected": "Specify devices whose diffusion (S/D) terminals are connected together.\n\nGroup devices that share the same net into one block, and separate different nets with a space.\n\nExample:\nIf devices A, B, C, D exist and A/B sources are connected, and C/D sources are connected:\n\nAB CD",
+    "odd_vertical": "Check this box to route odd-numbered metals vertically and even-numbered metals horizontally.\n\nUncheck it for the inverse: odd-numbered metals horizontal and even-numbered metals vertical.",
+    "metal_level": "Specify the minimum (starting) metal layer used for routing.\n\nRouting can only use this layer and above; lower metals are reserved and skipped.\n\nExample:\nIf devices normally route with two levels — met1 horizontal and met2 vertical — setting this to 2 forces routing to start at met2 instead. The two-level pair then shifts up: met2 (vertical) and met3 (horizontal).\n\nIn short: raising this value shifts your whole routing stack up, leaving the lower metals untouched."
+}

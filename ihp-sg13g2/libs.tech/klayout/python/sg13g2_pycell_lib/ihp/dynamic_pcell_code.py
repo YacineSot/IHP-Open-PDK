@@ -24,6 +24,7 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         minW       = techparams['nmos_minW']
 
         cls.add_separation(cls, specs, 'Version readonly')
+        descriptions = cls.read_description_file("./dynamic_pcell_descriptions.json")
         
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint())
 
@@ -44,17 +45,17 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         specs('horizontal_connection_width', 0.5, 'Horizontal Connection metal width', unit='um')
         specs('vertical_connection_width', 0.5, 'Vertical Connection metal width', unit='um')
         specs('connection_spacing', 0.5, 'Connection metal spacing', unit='um')
-        specs('nmos_layout_pattern', '3A4B3A', 'NMOS Layout Pattern')
-        specs('pmos_layout_pattern', '3C4D3C', 'PMOS Layout Pattern')
-        specs('gate_connected_to_source_devices', '', 'Devices which gate linked to source')
-        specs('gate_connected_to_drain_devices', '', 'Devices which gate linked to drain')
-        specs('gates_connected_devices', '', 'Devices which gates connected together')
-        specs('source_connected_devices', 'AB', 'Devices which sources connected together')
-        specs('drain_connected_devices', '', 'Devices which drains connected together')
+        specs('nmos_layout_pattern', '3A4B3A', 'NMOS Layout Pattern', tooltip=descriptions['layout_pattern'])
+        specs('pmos_layout_pattern', '3C4D3C', 'PMOS Layout Pattern', tooltip=descriptions['layout_pattern'])
+        specs('gate_connected_to_source_devices', '', 'Devices which gate linked to source', tooltip=descriptions['gate_connected_to'])
+        specs('gate_connected_to_drain_devices', 'A', 'Devices which gate linked to drain', tooltip=descriptions['gate_connected_to'])
+        specs('gates_connected_devices', 'AB', 'Devices which gates connected together', tooltip=descriptions['diff_connected'])
+        specs('source_connected_devices', 'AB CD', 'Devices which sources connected together', tooltip=descriptions['diff_connected'])
+        specs('drain_connected_devices', '', 'Devices which drains connected together', tooltip=descriptions['diff_connected'])
         specs('drains_to_tap_devices', '', 'Devices which drains connected to tap')
         specs('sources_to_tap_devices', '', 'Devices which sources connected to tap')
-        specs('odd_vertical', True, 'Vertical metals odd')
-        cls.additionnal_specs(cls, specs)
+        specs('odd_vertical', True, 'Vertical metals odd', tooltip=descriptions['odd_vertical'])
+        cls.additionnal_specs(cls, specs, descriptions)
         
         cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', 2, 'Number of dummies')
