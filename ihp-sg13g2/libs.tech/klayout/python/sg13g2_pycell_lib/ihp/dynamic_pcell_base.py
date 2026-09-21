@@ -110,12 +110,14 @@ class dynamic_pcell_base(base_definitions):
         nets_device_boxes = defaultdict(list)
         current_src_net_y = top + self.vertical_spacing
         current_drn_net_y = bottom - self.vertical_spacing
-        current_net_y = top + self.vertical_spacing if connection_dir == 'up' else bottom - self.vertical_spacing
+        current_net_y = top + self.connection_spacing if connection_dir == 'up' else bottom - self.connection_spacing
         dir_sign = 1 if connection_dir == 'up' else -1
         for i, core_device in enumerate(core_devices):
             source_net = self.get_net(core_device['name'], 'S')
             drain_net = self.get_net(core_device['name'], 'D')
             gate_net = self.get_net(core_device['name'], 'G')
+            for box in core_device['sources'] + core_device['drains']:
+                self.fix_min_met_area(box, 'v')
             nets_device_boxes[source_net] += core_device['sources']
             nets_device_boxes[drain_net] += core_device['drains']
             nets_device_boxes[gate_net] += core_device['gates_t'] if connection_dir == 'up' else core_device['gates_b']
@@ -127,13 +129,14 @@ class dynamic_pcell_base(base_definitions):
                     nets_horizontal_boxes[net] = net_box
                     self.draw_rect(net_box, self.horizontal_layers[0], net)
                     current_net_y += (self.vertical_connection_width + self.connection_spacing)*dir_sign
-                    for dev_src_box in nets_device_boxes[net]:
-                        boundary_box = self.get_boundary_box(dev_src_box, net_box)
-                        conn_center = dev_src_box.center().x
+                    for dev_diff_box in nets_device_boxes[net]:
+                        if 'GATE' in net: continue;
+                        boundary_box = self.get_boundary_box(dev_diff_box, net_box)
+                        conn_center = dev_diff_box.center().x
                         conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, boundary_box.bottom, conn_center + self.horizontal_connection_width/2, boundary_box.top)
                         self.draw_rect(conn_box, self.vertical_layers[0], net)
                         if self.metal_layers[0] != self.vertical_layers[0]:
-                            self.connect_boxes(conn_box, dev_src_box, self.vertical_layers[0], self.metal_layers[0])
+                            self.connect_boxes(conn_box, dev_diff_box, self.vertical_layers[0], self.metal_layers[0])
                         self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
                         
                 # if 'DRN' in net and 'D' not in current_row[i]['vertical_connection']:
@@ -160,7 +163,7 @@ class dynamic_pcell_base(base_definitions):
                         boundary_box = self.get_boundary_box(dev_gate_box, net_box)
                         conn_center = dev_gate_box.center().x
                         # conn_box = pya.DBox(conn_center - self.horizontal_connection_width/2, dev_gate_box.bottom, conn_center + self.horizontal_connection_width/2, net_box.top)
-                        conn_box = pya.DBox(dev_gate_box.left, boundary_box.bottom, dev_gate_box.right, boundary_box.top)
+                        conn_box = pya.DBox(min(dev_gate_box.left, conn_center-self.horizontal_connection_width/2), boundary_box.bottom, max(dev_gate_box.right, conn_center + self.horizontal_connection_width/2), boundary_box.top)
                         self.draw_rect(conn_box, self.vertical_layers[0], net)
                         if self.metal_layers[0] != self.vertical_layers[0]:
                             self.connect_boxes(conn_box, dev_gate_box, self.vertical_layers[0], self.metal_layers[0])
@@ -206,7 +209,7 @@ class dynamic_pcell_base(base_definitions):
         for dummy in left_dummies:
             for diff_box in dummy['sources']+dummy['drains']:
                 if diff_box.left > gt_connection_box.right: continue
-                conn_box = pya.DBox(diff_box.left, diff_box.bottom, diff_box.right, gt_connection_box.top)
+                conn_box = pya.DBox(diff_box.left, gt_connection_bbox.bottom, diff_box.right, gt_connection_box.top)
                 self.draw_rect(conn_box, self.metal_layers[0],'')
         # ## right dummies
         gt_min_device = min(right_dummies, key= lambda d: d['gate_top_contact'].left)
@@ -222,7 +225,7 @@ class dynamic_pcell_base(base_definitions):
         for dummy in right_dummies:
             for diff_box in dummy['sources']+dummy['drains']:
                 if diff_box.right < gt_connection_box.left: continue
-                conn_box = pya.DBox(diff_box.left, diff_box.bottom, diff_box.right, gt_connection_box.top)
+                conn_box = pya.DBox(diff_box.left, gt_connection_bbox.bottom, diff_box.right, gt_connection_box.top)
                 self.draw_rect(conn_box, self.metal_layers[0],'')
         
         

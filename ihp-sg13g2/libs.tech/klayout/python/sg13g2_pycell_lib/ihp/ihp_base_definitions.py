@@ -195,6 +195,25 @@ class ihp_base_definitions(base_definitions):
         rotation = 'R0' if box.width() >= box.height() else 'R90'
         dbCreateLabel(self, layer, point, text, "centerCenter", rotation, Font.EURO_STYLE, auto_size)
     
+    
+    def fix_min_met_area(self, box, direction):
+        """
+        Template method for subclasses to overwrite
+        
+        Check if the box acheive the minimum box area and fix it if not
+        
+        """
+        min_area = self.techparams['M1_d']
+        width = box.width()
+        height = box.height()
+        vertical_size = self.fix_grid(min_area/height - height if direction == 'v' else 0)
+        horizontal_size = self.fix_grid(min_area/width - width if direction == 'h' else 0)
+        if box.area() < min_area:
+            nbox = box.enlarged(horizontal_size, vertical_size)
+            self.draw_rect(nbox, self.metal_layers[0])
+            
+    
+    
     def gen_via(self, box, b_layer, t_layer, origin='centerCenter'):
         """
         Template method for subclasses to overwrite

@@ -176,37 +176,67 @@ class base_definitions():
         
         # Process Sources
         for group in source_connected.split():
+            # 1. Find gates directly tied to this source group
+            attached_gates = set(d for d in group if d in gate_connected_to_source)
+            
+            # 2. Expand to include other gates tied to these via gate_connected
+            for g_group in gate_connected.split():
+                if any(g in attached_gates for g in g_group):
+                    attached_gates.update(g_group)
+            
             net_name = f"SRC_NET_{group}"
-            connected_gates = [g for g in gate_connected_to_source if any(d in group for d in g)]
-            if connected_gates:
-                net_name += "_GATE_" + "_".join(connected_gates)
+            if attached_gates:
+                # Sort for clean, predictable naming (e.g., GATE_AB)
+                gates_str = "".join(sorted(attached_gates))
+                net_name += f"_GATE_{gates_str}"
+                
             for device_letter in group:
                 term_to_net[(device_letter, 'S')] = net_name
-                if device_letter in gate_connected_to_source:
-                    term_to_net[(device_letter, 'G')] = net_name
+                
+            # Assign the complete net to all collected gates
+            for g in attached_gates:
+                term_to_net[(g, 'G')] = net_name
                 
         # Process Drains
         for group in drain_connected.split():
+            # 1. Find gates directly tied to this drain group
+            attached_gates = set(d for d in group if d in gate_connected_to_drain)
+            
+            # 2. Expand to include other gates tied to these via gate_connected
+            for g_group in gate_connected.split():
+                if any(g in attached_gates for g in g_group):
+                    attached_gates.update(g_group)
+            
             net_name = f"DRN_NET_{group}"
-            connected_gates = [g for g in gate_connected_to_drain if any(d in group for d in g)]
-            if connected_gates:
-                net_name += "_GATE_" + "_".join(connected_gates)
+            if attached_gates:
+                gates_str = "".join(sorted(attached_gates))
+                net_name += f"_GATE_{gates_str}"
+                
             for device_letter in group:
                 term_to_net[(device_letter, 'D')] = net_name
-                if device_letter in gate_connected_to_drain:
-                    term_to_net[(device_letter, 'G')] = net_name
+                
+            # Assign the complete net to all collected gates
+            for g in attached_gates:
+                term_to_net[(g, 'G')] = net_name
         
         # Process Gates
         for group in gate_connected.split():
-            if any((device_letter, 'G') in term_to_net for device_letter in group):
-                existing_net = next(term_to_net[(d, 'G')] for d in group if (d, 'G') in term_to_net)
-                if (device_letter, 'G') not in term_to_net:
-                    term_to_net[(device_letter, 'G')] = existing_net
-                continue;
+            # Check if any device in this gate group was already assigned a net (from Source/Drain)
+            assigned_devices = [d for d in group if (d, 'G') in term_to_net]
+            
+            if assigned_devices:
+                # Get the existing net (which now includes _GATE_{letters}) 
+                existing_net = term_to_net[(assigned_devices[0], 'G')]
                 
-            net_name = f"GATE_NET_{group}"
-            for device_letter in group:
-                term_to_net[(device_letter, 'G')] = net_name
+                # Apply this net to any remaining devices in the current gate group
+                for d in group:
+                    if (d, 'G') not in term_to_net:
+                        term_to_net[(d, 'G')] = existing_net
+            else:
+                # If none are tied to a Source/Drain, create a brand new, isolated gate net
+                net_name = f"GATE_NET_{group}"
+                for d in group:
+                    term_to_net[(d, 'G')] = net_name
 
         self.term_to_net = term_to_net
 
@@ -397,6 +427,18 @@ class base_definitions():
     def extract_pairs(input_str):
         pair = re.findall(r'\d+[a-zA-Z]', input_str)
         return {'device': pair[1], 'fingers': int(pair[0])}
+    
+    
+    def fix_min_met_area(self, box, direction):
+        """
+        Template method for subclasses to overwrite
+        
+        Check if the box acheive the minimum box area and fix it if not
+        
+        """
+        raise NotImplementedError()
+    
+    
     
     def gen_via(self, box, b_layer, t_layer):
         """
