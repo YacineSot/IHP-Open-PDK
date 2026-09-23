@@ -14,7 +14,7 @@ import cni.dlo
 class ihp_base_definitions(base_definitions):
     def additionnal_specs(self, specs, descriptions):
         specs("start_level", 2, "First connection metal", ChoiceConstraint([1,2,3]), tooltip=descriptions['metal_level'])
-        specs("odd_vertical", True, "Vertical Metal ODD")
+        specs("odd_vertical", True, "Vertical Metal ODD",tooltip=descriptions['odd_vertical'])
     
     def change_cell(self, row_name):
         sub_cell = self.layout.create_cell(row_name)

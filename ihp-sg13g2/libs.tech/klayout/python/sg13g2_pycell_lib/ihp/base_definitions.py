@@ -1,6 +1,9 @@
 import re
 import pya
 from itertools import groupby
+from pathlib import Path
+import json
+
 
 class base_definitions():
     def set_devices(self, model_type):
@@ -158,6 +161,11 @@ class base_definitions():
             output_array += base_definitions.format_one_line_string(row)
         return output_array
     
+    @staticmethod
+    def read_description_file(file_name):
+        with open(Path(__file__).parent / file_name, "r", encoding="utf-8") as f:
+            file = json.load(f)
+        return file
     
     ######################################
     ##         PROCESS PATTERN          ##

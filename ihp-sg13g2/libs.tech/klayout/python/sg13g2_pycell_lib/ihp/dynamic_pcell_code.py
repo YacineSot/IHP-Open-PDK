@@ -57,7 +57,6 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         specs('sources_to_tap_devices', '', 'Devices which sources connected to tap', tooltip=descriptions['sources_to_tap_devices'])
         specs('draw_vertical_connections', True, 'Draw Vertical Connections', tooltip=descriptions['draw_vertical_connections'])
         specs('draw_horizontal_connections', False, 'Draw Horizontal Connections', tooltip=descriptions['draw_horizontal_connections'])
-        specs('odd_vertical', True, 'Vertical metals odd', tooltip=descriptions['odd_vertical'])
         cls.additionnal_specs(cls, specs, descriptions)
         
         cls.add_separation(cls, specs, 'Dummies settings')

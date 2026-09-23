@@ -130,9 +130,9 @@ class dynamic_pcell_base(base_definitions):
         nets_horizontal_boxes = {}
         nets_device_boxes = defaultdict(list)
         
-        current_src_net_y = top + self.vertical_spacing
-        current_drn_net_y = bottom - self.vertical_spacing
-        current_net_y = top + self.connection_spacing if connection_dir == 'up' else bottom - self.connection_spacing
+        current_top_net_y = top + self.connection_spacing + 0.3
+        current_bot_net_y = bottom - self.connection_spacing - 0.3
+        current_net_y = current_top_net_y if connection_dir == 'up' else current_bot_net_y
         dir_sign = 1 if connection_dir == 'up' else -1
         
         for i, core_device in enumerate(core_devices):

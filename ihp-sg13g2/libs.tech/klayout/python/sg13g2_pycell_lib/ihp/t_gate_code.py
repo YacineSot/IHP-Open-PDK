@@ -40,6 +40,7 @@ class t_gate(DloGen, t_gate_base, ihp_base_definitions):
         cls.techparams = techparams
 
         CDFVersion = techparams['CDFVersion']
+        descriptions = cls.read_description_file("./dynamic_pcell_descriptions.json")
 
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint())
         specs('w' , '5u', 'PMOS Width')
@@ -57,7 +58,7 @@ class t_gate(DloGen, t_gate_base, ihp_base_definitions):
         specs('connection_metal_width', '0.5u', 'Connection metal width')
         specs('self.inner_connection_width', '0.2u', 'Inner Connections M1 width')
         specs('connection_metal_spacing', '0.5u', 'Connection metal spacing')
-        cls.additionnal_specs(cls, specs, {"metal_level": ""})
+        cls.additionnal_specs(cls, specs, descriptions)
         
         
 

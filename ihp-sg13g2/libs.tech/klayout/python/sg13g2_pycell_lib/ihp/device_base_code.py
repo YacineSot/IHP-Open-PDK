@@ -46,9 +46,6 @@ from .geometry import *
 from .guard_ring_code import generate_guard_ring, GuardRingType, GuardRingShape
 from .utility_functions import *
 from .via_stack_code import *
-from pathlib import Path
-import json
-
 
 class DeviceBase(DloGen):
     @classmethod
@@ -102,12 +99,6 @@ class DeviceBase(DloGen):
                 self.even_layers.append(Layer(f'Metal{i}'))
             else:
                 self.odd_layers.append(Layer(f'Metal{i}'))
-    
-    @staticmethod
-    def read_description_file(file_name):
-        with open(Path(__file__).parent / file_name, "r", encoding="utf-8") as f:
-            file = json.load(f)
-        return file
     
     def add_separation(self, specs, separator = 'Separator'):
         count = len(specs.get_parameters())
