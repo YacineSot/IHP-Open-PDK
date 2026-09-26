@@ -102,7 +102,7 @@ class ihp_base_definitions(base_definitions):
                     'ng': ng, 
                     'gate_connection': gate_connection,
                     'cnt_w_ratio': 80,
-                    'gate_cnt_ratio': 80,
+                    'gate_cnt_ratio': 60,
                     'guardRingType': 'none',
                     'guardRingDistance': 0.5,
                 } | connection_params
@@ -206,8 +206,8 @@ class ihp_base_definitions(base_definitions):
         min_area = self.techparams['M1_d']
         width = box.width()
         height = box.height()
-        vertical_size = self.fix_grid(min_area/height - height if direction == 'v' else 0)
-        horizontal_size = self.fix_grid(min_area/width - width if direction == 'h' else 0)
+        vertical_size = self.fix_grid(min_area/width - height if direction == 'v' else 0)/2
+        horizontal_size = self.fix_grid(min_area/height - width if direction == 'h' else 0)/2
         if box.area() < min_area:
             nbox = box.enlarged(horizontal_size, vertical_size)
             self.draw_rect(nbox, self.metal_layers[0])
