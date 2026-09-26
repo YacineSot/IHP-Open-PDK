@@ -182,6 +182,14 @@ class base_definitions():
         gate_connected_to_source = self.gate_connected_to_source_devices
         gate_connected_to_drain = self.gate_connected_to_drain_devices
         
+        ## to process states where gates tied to drain/source
+        for char in set(gate_connected_to_source.strip()):
+            if not char in source_connected:
+                source_connected += " "+char
+        for char in set(gate_connected_to_drain.strip()):
+            if not char in drain_connected:
+                drain_connected += " "+char
+        
         # Process Sources
         for group in source_connected.split():
             # 1. Find gates directly tied to this source group

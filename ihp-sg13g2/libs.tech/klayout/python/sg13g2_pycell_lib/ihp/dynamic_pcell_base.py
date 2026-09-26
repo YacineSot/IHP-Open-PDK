@@ -88,10 +88,11 @@ class dynamic_pcell_base(base_definitions):
                 space_needed_for_overlapping = self.calc_overlapping_distance(left_dummies[0]) if left_dummies else 0.3
             
         # --- Generate Core Devices ---
-        core_x_offset = row_dimensions['Dummies_Width'] + self.dummies_core_spacing
+        core_x_offset = max(left_dummies, key=lambda dum: dum['active_box'].right)['active_box'].right + self.dummies_core_spacing
         current_x = core_x_offset
         current_row = self.layout_instructions[index]
         core_devices = []
+        core_width = 0
         
         for i, dev in enumerate(current_row):
             gate_connection = ''
@@ -102,6 +103,10 @@ class dynamic_pcell_base(base_definitions):
                 w, l, dev['fingers'], gate_connection, model, current_x, y_position, 
                 dev['device'], connections_dict, dev['start_diffusion']
             )
+            if i==0:
+                core_width = device['active_box'].left
+            if i == len(current_row) - 1:
+                core_width =  abs(device['active_box'].right - core_width)
             core_devices.append(device)
             current_x += device_dimensions['Width']
             
@@ -112,7 +117,7 @@ class dynamic_pcell_base(base_definitions):
                 current_x += self.horizontal_spacing
         
         # --- Generate Right Dummies ---
-        right_dummies_x_offset = core_x_offset + row_dimensions['Core_Width'] + self.dummies_core_spacing
+        right_dummies_x_offset = core_x_offset + core_width + self.dummies_core_spacing
         right_dummies = []
         
         for i in range(dummies_count):
@@ -150,9 +155,11 @@ class dynamic_pcell_base(base_definitions):
 
         if self.draw_horizontal_connections:
             for net in nets_device_boxes:
+                #if len(nets_device_boxes[net]) < 2: continue
                 # Route Source/Drain
-                if ('SRC' in net and 'S' not in current_row[i]['vertical_connection']) or \
-                   ('DRN' in net and 'D' not in current_row[i]['vertical_connection']):
+                if (('SRC' in net and 'S' not in current_row[i]['vertical_connection']) or \
+                   ('DRN' in net and 'D' not in current_row[i]['vertical_connection'])) and \
+                       nets_device_boxes[net]:
                     net_box = pya.DBox(
                         min(box.center().x for box in nets_device_boxes[net]) - self.vertical_connection_width / 2, 
                         current_net_y, 
@@ -160,7 +167,8 @@ class dynamic_pcell_base(base_definitions):
                         current_net_y + self.vertical_connection_width * dir_sign
                     )
                     nets_horizontal_boxes[net] = net_box
-                    self.draw_rect(net_box, self.horizontal_layers[0], net)
+                    if net_box.width() > self.vertical_connection_width:
+                        self.draw_rect(net_box, self.horizontal_layers[0], net)
                     current_net_y += (self.vertical_connection_width + self.connection_spacing) * dir_sign
                     
                     for dev_diff_box in nets_device_boxes[net]:
@@ -176,6 +184,7 @@ class dynamic_pcell_base(base_definitions):
                         self.draw_rect(conn_box, self.vertical_layers[0], net)
                         if self.metal_layers[0] != self.vertical_layers[0]:
                             self.connect_boxes(conn_box, dev_diff_box, self.vertical_layers[0], self.metal_layers[0])
+                        #if net_box.width() <= self.vertical_connection_width:
                         self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
                         
                 # Route Gates
@@ -304,12 +313,12 @@ class dynamic_pcell_base(base_definitions):
     def gen_array_by_model(self, pattern, model, w, l, dl, guard_ring_type, direction='up', start_y=0):
         """Generates all rows for a specific device type (PMOS or NMOS)."""
         formatted_pattern = self.format_pattern_string(pattern)
-        self.layout_instructions = {}
+        self.layout_instructions = []
         
         for i in range(len(formatted_pattern)):
             row = formatted_pattern[i]
             next_row = formatted_pattern[i+1] if i < len(formatted_pattern) - 1 else None
-            self.layout_instructions[i] = self.optimize_row_diffusion(row, next_row)
+            self.layout_instructions.append(self.optimize_row_diffusion(row, next_row))
             
         y_position = start_y
         sign = 1 if direction == 'up' else -1
@@ -342,16 +351,24 @@ class dynamic_pcell_base(base_definitions):
             next_row = rows[i+1]['core_devices']
             
             for j, inst in enumerate(current_row_instructions):
-                next_connection_top = next_row[0]['source_contact'].top
-                next_connection_bottom = next_row[0]['source_contact'].bottom
+                next_row_core = next_row[0]
+                next_connection_top = next_row_core['source_contact'].top
+                next_connection_bottom = next_row_core['source_contact'].bottom
                 connection_v_end = next_connection_bottom if direction == 'down' else next_connection_top
                 
                 for current_diff in ['S', 'D']:
-                    if current_diff in inst['vertical_connection']:
+                    if current_diff in inst['vertical_connection'] :
                         diff_index = 'sources' if current_diff == 'S' else 'drains'
                         device = row['core_devices'][j]
+                        net = self.get_net(inst['device'], current_diff)
+                        next_diffs = sum([
+                            (dev['sources'] if net == self.get_net(dev['name'], 'S') else []) + 
+                            (dev['drains'] if net == self.get_net(dev['name'], 'D') else []) 
+                            for dev in next_row
+                        ], [])
                         
                         for diff_box in device[diff_index]:
+                            if not any(n_diff.left == diff_box.left for n_diff in next_diffs): continue
                             box_center = diff_box.center().x
                             connection_v_start = diff_box.top if direction == 'down' else diff_box.bottom
                             
@@ -403,7 +420,7 @@ class dynamic_pcell_base(base_definitions):
                 self.nmos_w, self.nmos_l, 1, 'T-B', self.nmos, 
                 {'horizontal_connection_width': self.horizontal_connection_width, 'connection_spacing': self.connection_spacing}
             )
-            down_start_y -= self.vertical_spacing + self.guardRingWidth + self.vertical_spacing + nmos_dimensions["Height"]
+            down_start_y -= self.vertical_spacing + self.guardRingWidth + nmos_dimensions["Height"]
             
             first_row_nets = set(self.get_row_nets([letter for letter in self.nmos_layout_pattern.split()[0] if letter.isalpha()]))
             first_row_nets = [net for net in first_row_nets if 'SRC' in net or 'GATE' in net]
