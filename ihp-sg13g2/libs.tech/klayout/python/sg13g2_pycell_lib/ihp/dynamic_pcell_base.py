@@ -146,7 +146,7 @@ class dynamic_pcell_base(base_definitions):
             gate_net = self.get_net(core_device['name'], 'G')
             
             # Enforce minimum metal area rules on diffusions
-            for box in core_device['sources'] + core_device['drains']:
+            for box in (core_device['sources'] + core_device['drains']):
                 self.fix_min_met_area(box, 'v')
                 
             nets_device_boxes[source_net] += core_device['sources']
