@@ -170,7 +170,8 @@
             },
             {
                 "devices": ["nmos", "pmos", "nmosHV"],
-                "callbacks": [
+				"callbacks": [],
+                "callbacks_disabled": [
                     {
                         "callback": "NLCB_mos_w",
                         "pcellParameters": ["w"],
@@ -190,7 +191,8 @@
             },
             {
                 "devices": ["pmosHV"],
-                "callbacks": [
+				"callbacks": [],
+                "callbacks_disabled": [
                     {
                         "callback": "NLCB_mos_w",
                         "pcellParameters": ["w"],

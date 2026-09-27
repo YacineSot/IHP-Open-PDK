@@ -16,7 +16,7 @@ results_end_tag = "results_save_end"
 plot_begin_tag = "**results_plot_begin"
 plot_end_tag = "**results_plot_end"
 
-simulations_dir = "./simulations"
+simulations_dir = "./schema/simulations"
 results_dir = os.path.join(simulations_dir, "results")
 
 if len(sys.argv) < 2:
@@ -99,7 +99,11 @@ def run_worker(args):
                     for line in block.strip().splitlines():
                         if '=' in line:
                             result_name, result_value = line.split('=')
-                            result[result_name.strip()] = float(result_value.strip())
+                            try:
+                                result[result_name.strip()] = float(result_value.strip())
+                            except():
+                                print(f"cant convert result_value={result_value} to float!")
+                                result[result_name.strip()] = 0.00
                     # write in csv file
                     if writeHeadings:
                         writer.writerow(list(result.keys()))

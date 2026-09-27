@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Copyright 2023-2026 The ngspice team
 # Authors: Holger Vogt, Dietmar Warning, Harald Pretl
 # License: New BSD

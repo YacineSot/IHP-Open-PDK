@@ -41,16 +41,9 @@ import tempfile
 import traceback
 
 moduleNames = [
-        'nmos_code',
-        'nmosHV_code',
-        'pmos_code',
-        'pmosHV_code',
         'cmim_code',
-        'cmomi_code',
         'cmomf_code',
-        'rsil_code',
-        'rhigh_code',
-        'rppd_code',
+        'cmomi_code',
         'sealring_code',
         'npn13G2_code',
         'npn13G2L_code',
@@ -58,8 +51,7 @@ moduleNames = [
         'inductor2_code',
         'inductor3_code',
         'dantenna_code',
-        'dpantenna_code',
-        'via_stack_code',
+        'dpantenna_code',        
         'ptap1_code',
         'ntap1_code',
         'bondpad_code',
@@ -78,6 +70,23 @@ moduleNames = [
         'isolbox_code',
         'schottky_code',
         'chipText_code'
+]
+
+custom_moduleNames = [
+        'nmos_code',
+        'nmosHV_code',
+        'pmos_code',
+        'pmosHV_code',
+        'rsil_code',
+        'rhigh_code',
+        'rppd_code',
+        'via_stack_code',
+        'guard_ring_code',
+        'mirror_code',
+        #'mirror_ihp_code',
+        #'diff_pairs_code',
+        't_gate_code', 
+        'dynamic_pcell_code'
 ]
 
 def getProcessNames():
@@ -164,7 +173,7 @@ if the environment variable 'IHP_PYCELL_LIB_PRINT_DEFINES_SET' is set.
 
 """
 class PyCellLib(pya.Library):
-    def __init__(self):
+    def __init__(self, lib_name = 'SG13_dev', moduleNames = moduleNames):
         self.description = "IHP SG13G2 Pcells"
         self.technology = SG13_Tech.TECH_NAME
 
@@ -176,11 +185,11 @@ class PyCellLib(pya.Library):
         preProcDir = tempfile.mkdtemp(prefix='sg13g2_pycell_')
 
         try:
-            self.registerPCells(preProcDir)
+            self.registerPCells(preProcDir, lib_name, moduleNames)
         finally:
             shutil.rmtree(preProcDir, ignore_errors=True)
 
-    def registerPCells(self, preProcDir):
+    def registerPCells(self, preProcDir, lib_name, moduleNames):
         tech = Tech.get('SG13_dev')
 
         processNames = []
@@ -268,18 +277,9 @@ class PyCellLib(pya.Library):
         if os.getenv('IHP_PYCELL_LIB_PRINT_DEFINES_SET') is not None:
             print(f"Current defines set: {definesSetToPrint}")
 
-        self.register("SG13_dev")
+        self.register(lib_name)
 
-
-class SG13G2_NativePCellLib(pya.Library):
-    def __init__(self):
-        self.description = "SG13G2 Native PCells"
-        self.technology = SG13_Tech.TECH_NAME
-        self.layout().register_pcell("Via", ViaPCell())
-        self.register("SG13_native_pcell_lib")
-
-
-# instantiate and register the libraries
+# instantiate and register the library
 PyCellLib()
-SG13G2_NativePCellLib()
+PyCellLib(lib_name="SG13_custom_dev", moduleNames=custom_moduleNames)
 
