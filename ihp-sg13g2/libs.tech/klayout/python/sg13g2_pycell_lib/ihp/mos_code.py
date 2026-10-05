@@ -613,7 +613,7 @@ class mos_base(DeviceBase):
                 gates = []
                 for i in range(self.dummies_count):
                     x_pos = diff_box.left - left_spacing - i*(self.dummies_inner_spacing) - (i+1)*width
-                    dummy_device = self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+                    dummy_device = self.instanciate_self(params, pya.DPoint(x_pos, start_y))
                     gates.append(dummy_device.gate_box)
                 min_left = min(gates, key = lambda r: r.left).left
                 max_right = max(gates, key = lambda r: r.right).right
@@ -639,7 +639,7 @@ class mos_base(DeviceBase):
                 gates = []
                 for i in range(self.dummies_count):
                     x_pos = diff_box.right + i*(self.dummies_inner_spacing) + (i)*width  + right_spacing
-                    dummy_device = self.instanciate_self(params, pya.DPoint(x_pos, self.sy))
+                    dummy_device = self.instanciate_self(params, pya.DPoint(x_pos, start_y))
                     gates.append(dummy_device.gate_box)
                 min_left = min(gates, key = lambda r: r.left).left
                 max_right = max(gates, key = lambda r: r.right).right

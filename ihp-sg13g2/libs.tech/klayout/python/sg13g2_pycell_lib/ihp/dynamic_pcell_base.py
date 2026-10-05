@@ -108,7 +108,7 @@ class dynamic_pcell_base(base_definitions):
             if i == len(current_row) - 1:
                 core_width =  abs(device['active_box'].right - core_width)
             core_devices.append(device)
-            current_x += device_dimensions['Width']
+            current_x += device['active_box'].width()
             
             # Handle diffusion sharing/merging between adjacent devices
             if dev['merge_next']:

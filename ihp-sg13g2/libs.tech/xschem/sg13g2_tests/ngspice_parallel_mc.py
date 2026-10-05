@@ -171,9 +171,11 @@ if __name__ == "__main__":
         for var in results_plot_list:
             data = np.array(results_dict[var.lower()])
             mean = data.mean()
+            max_val = data.max()
+            min_val = data.min()
             std = data.std()
             axs[i].hist(data, bins=50, color='skyblue', edgecolor='black')
-            axs[i].set_title(f"Histogram of {var}")
+            axs[i].set_title(f"\n\nHistogram of {var}, number of points: {data.size}, \nmin: {min_val}, \nmax: {max_val}, \nmean: {mean}, \nstd={std}")
             axs[i].set_xlabel(f"{var}")
             axs[i].set_ylabel("Count")
             ymax = axs[i].get_ylim()[1]

@@ -62,4 +62,18 @@ connect(metal5_con, metal5_text)
 connect(topmetal1_con, topmetal1_text)
 connect(topmetal2_con, topmetal2_text)
 
+# NMOSCAP (moscap_n) vertical stack bridging
+connect(pwell, nmoscap_diff_port)
+connect(nmoscap_diff_port, cont_drw)
+connect(cont_drw, nmoscap_bulk_port)
+connect(nmoscap_bulk_port, metal1_con)
+connect(nmoscap_poly_port, poly_con)
+
+# PMOSCAP (moscap_p) vertical stack bridging
+connect(nwell_drw, pmoscap_diff_port)
+connect(pmoscap_diff_port, cont_drw)
+connect(cont_drw, pmoscap_bulk_port)
+connect(pmoscap_bulk_port, metal1_con)
+connect(pmoscap_poly_port, poly_con)
+
 logger.info('Starting SG13G2 LVS connectivity setup (Global)')
