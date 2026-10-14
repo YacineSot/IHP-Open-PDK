@@ -65,8 +65,9 @@ class dynamic_pcell_base(base_definitions):
             'connection_spacing': self.connection_spacing,
             'connect_gates_use_poly': self.connect_gates_use_poly,
             's_d_mlayer': "M1", 
-            'gate_metal': "M1",
+            'gate_metal': "M1" if self.draw_horizontal_connections else None,
             'odd_vertical': self.odd_vertical,
+            'start_level': self.start_level,
             'distribute_connections': True,
         }
         
@@ -155,7 +156,6 @@ class dynamic_pcell_base(base_definitions):
 
         if self.draw_horizontal_connections:
             for net in nets_device_boxes:
-                #if len(nets_device_boxes[net]) < 2: continue
                 # Route Source/Drain
                 if (('SRC' in net and 'S' not in current_row[i]['vertical_connection']) or \
                    ('DRN' in net and 'D' not in current_row[i]['vertical_connection'])) and \
@@ -164,27 +164,26 @@ class dynamic_pcell_base(base_definitions):
                         min(box.center().x for box in nets_device_boxes[net]) - self.vertical_connection_width / 2, 
                         current_net_y, 
                         max(box.center().x for box in nets_device_boxes[net]) + self.vertical_connection_width / 2, 
-                        current_net_y + self.vertical_connection_width * dir_sign
+                        current_net_y + self.horizontal_connection_width * dir_sign # FIXED HEIGHT
                     )
                     nets_horizontal_boxes[net] = net_box
                     if net_box.width() > self.vertical_connection_width:
                         self.draw_rect(net_box, self.horizontal_layers[0], net)
-                    current_net_y += (self.vertical_connection_width + self.connection_spacing) * dir_sign
+                    current_net_y += (self.horizontal_connection_width + self.connection_spacing) * dir_sign # FIXED STEP
                     
                     for dev_diff_box in nets_device_boxes[net]:
                         if 'GATE' in net: continue
                         boundary_box = self.get_boundary_box(dev_diff_box, net_box)
                         conn_center = dev_diff_box.center().x
                         conn_box = pya.DBox(
-                            conn_center - self.horizontal_connection_width / 2, 
+                            conn_center - self.vertical_connection_width / 2, # FIXED WIDTH
                             boundary_box.bottom, 
-                            conn_center + self.horizontal_connection_width / 2, 
+                            conn_center + self.vertical_connection_width / 2, # FIXED WIDTH
                             boundary_box.top
                         )
                         self.draw_rect(conn_box, self.vertical_layers[0], net)
                         if self.metal_layers[0] != self.vertical_layers[0]:
                             self.connect_boxes(conn_box, dev_diff_box, self.vertical_layers[0], self.metal_layers[0])
-                        #if net_box.width() <= self.vertical_connection_width:
                         self.connect_boxes(conn_box, net_box, self.vertical_layers[0], self.horizontal_layers[0])
                         
                 # Route Gates
@@ -194,19 +193,19 @@ class dynamic_pcell_base(base_definitions):
                             min(box.left for box in nets_device_boxes[net]), 
                             current_net_y, 
                             max(box.right for box in nets_device_boxes[net]), 
-                            current_net_y + self.vertical_connection_width * dir_sign
+                            current_net_y + self.horizontal_connection_width * dir_sign # FIXED HEIGHT
                         )
                         nets_horizontal_boxes[net] = net_box
                         self.draw_rect(net_box, self.horizontal_layers[0], net)
-                        current_net_y += (self.vertical_connection_width + self.connection_spacing) * dir_sign
+                        current_net_y += (self.horizontal_connection_width + self.connection_spacing) * dir_sign # FIXED STEP
                         
                     for dev_gate_box in nets_device_boxes[net]:
                         boundary_box = self.get_boundary_box(dev_gate_box, net_box)
                         conn_center = dev_gate_box.center().x
                         conn_box = pya.DBox(
-                            min(dev_gate_box.left, conn_center - self.horizontal_connection_width / 2), 
+                            min(dev_gate_box.left, conn_center - self.vertical_connection_width / 2), # FIXED WIDTH
                             boundary_box.bottom, 
-                            max(dev_gate_box.right, conn_center + self.horizontal_connection_width / 2), 
+                            max(dev_gate_box.right, conn_center + self.vertical_connection_width / 2), # FIXED WIDTH
                             boundary_box.top
                         )
                         self.draw_rect(conn_box, self.vertical_layers[0], net)
@@ -373,9 +372,9 @@ class dynamic_pcell_base(base_definitions):
                             connection_v_start = diff_box.top if direction == 'down' else diff_box.bottom
                             
                             conn_box = pya.DBox(
-                                box_center - self.horizontal_connection_width / 2, 
+                                box_center - self.vertical_connection_width / 2, # FIXED WIDTH
                                 connection_v_end, 
-                                box_center + self.horizontal_connection_width / 2, 
+                                box_center + self.vertical_connection_width / 2, # FIXED WIDTH
                                 connection_v_start
                             )
                             self.draw_rect(conn_box, self.vertical_layers[0], self.get_net(device['name'], current_diff))

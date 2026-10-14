@@ -82,7 +82,7 @@ custom_moduleNames = [
         'rppd_code',
         'via_stack_code',
         'guard_ring_code',
-        'mirror_code',
+        #'mirror_code',
         #'mirror_ihp_code',
         #'diff_pairs_code',
         't_gate_code', 

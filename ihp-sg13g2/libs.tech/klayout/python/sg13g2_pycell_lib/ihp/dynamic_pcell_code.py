@@ -30,11 +30,11 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint(), tooltip=descriptions['cdf_version'])
 
         cls.add_separation(cls, specs, 'Devices Sizing')
-        specs('pmos_w', 5e-6, 'PMOS Width', unit='m', tooltip=descriptions['pmos_w'])
-        specs('pmos_l', 3e-6, 'PMOS Length', unit='m', tooltip=descriptions['pmos_l'])
-        specs('nmos_w', 5e-6, 'NMOS Width', unit='m', tooltip=descriptions['nmos_w'])
-        specs('nmos_l' , 3e-6, 'NMOS Length', unit='m', tooltip=descriptions['nmos_l'])
-       
+        specs('pmos_w', 5, 'PMOS Width', unit='um', tooltip=descriptions['pmos_w'])
+        specs('pmos_l', 3, 'PMOS Length', unit='um', tooltip=descriptions['pmos_l'])
+        specs('nmos_w', 5, 'NMOS Width', unit='um', tooltip=descriptions['nmos_w'])
+        specs('nmos_l' , 3, 'NMOS Length', unit='um', tooltip=descriptions['nmos_l'])
+    
         cls.add_separation(cls, specs, 'Model Type')
         specs('model_type', 'LV', 'Model Type', ChoiceConstraint(['HV', 'LV']), tooltip=descriptions['model_type'])
         
@@ -54,8 +54,8 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         specs('gates_connected_devices', 'AB', 'Devices which gates connected together', tooltip=descriptions['gates_connected_devices'])
         specs('source_connected_devices', 'AB CD', 'Devices which sources connected together', tooltip=descriptions['source_connected_devices'])
         specs('drain_connected_devices', '', 'Devices which drains connected together', tooltip=descriptions['drain_connected_devices'])
-        specs('drains_to_tap_devices', 'TBD', 'Devices which drains connected to tap',ReadOnlyConstraint(), tooltip=descriptions['drains_to_tap_devices'])
-        specs('sources_to_tap_devices', 'TBD', 'Devices which sources connected to tap',ReadOnlyConstraint(), tooltip=descriptions['sources_to_tap_devices'])
+        # specs('drains_to_tap_devices', 'TBD', 'Devices which drains connected to tap',ReadOnlyConstraint(), tooltip=descriptions['drains_to_tap_devices'])
+        # specs('sources_to_tap_devices', 'TBD', 'Devices which sources connected to tap',ReadOnlyConstraint(), tooltip=descriptions['sources_to_tap_devices'])
         specs('draw_vertical_connections', True, 'Draw Vertical Connections', tooltip=descriptions['draw_vertical_connections'])
         specs('draw_horizontal_connections', False, 'Draw Horizontal Connections', tooltip=descriptions['draw_horizontal_connections'])
         cls.additionnal_specs(cls, specs, descriptions)
@@ -63,8 +63,8 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         cls.add_separation(cls, specs, 'Dummies settings')
         specs('dummies_count', 2, 'Number of dummies', tooltip=descriptions['dummies_count'])
         specs('inner_dummies_count',0,'Number of dummies between devices', tooltip=descriptions['inner_dummies_count'])
-        specs('dummy_pmos_l', 0.5e-6, 'Dummy PMOS length', unit='m', tooltip=descriptions['dummy_pmos_l'])
-        specs('dummy_nmos_l', 0.5e-6, 'Dummy NMOS length', unit='m', tooltip=descriptions['dummy_nmos_l'])
+        specs('dummy_pmos_l', 0.5, 'Dummy PMOS length', unit='um', tooltip=descriptions['dummy_pmos_l'])
+        specs('dummy_nmos_l', 0.5, 'Dummy NMOS length', unit='um', tooltip=descriptions['dummy_nmos_l'])
         specs('dummies_core_spacing', -0.3, 'Distance between core and dummy', unit='um', tooltip=descriptions['dummies_core_spacing'])
         specs('dummies_spacing', 0.2, 'Distance between dummies', unit='um', tooltip=descriptions['dummies_spacing'])
         specs('overlap_dummies_diffusions', True, 'Overlap Dummies S/D diffusions', tooltip=descriptions['overlap_dummies_diffusions'])
@@ -79,11 +79,20 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         # process parameter values entered by user
         self.__dict__.update(params)
         self.set_devices(self.model_type)
+        self.convert_to_um(['pmos_w', 'pmos_l', 'nmos_w', 'nmos_l', 'dummy_pmos_l', 'dummy_nmos_l'])
         params['guardRingType'] = 'auto'
         self.use_deep_nwell = self.use_nbulay
         self.pmos_layout_pattern = self.sanitize_pattern_string(self.pmos_layout_pattern)
         self.nmos_layout_pattern = self.sanitize_pattern_string(self.nmos_layout_pattern)
         super().setupParams(params)
+    
+    
+    def convert_to_um(self, param_names):
+        for param_name in param_names:
+            if hasattr(self, param_name):
+                value = getattr(self, param_name)
+                if isinstance(value, (int, float)):
+                    setattr(self, param_name, value * 1e-6)  # Convert to micrometers
     
     def sanitize_pattern_string(self, pattern: str) -> str:
         """

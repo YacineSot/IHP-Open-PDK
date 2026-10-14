@@ -79,6 +79,7 @@ class mos_base(DeviceBase):
         specs('vertical_connection_width', f'{Mn_size}u', 'Vertical Connection Width')
         specs('connection_spacing', f'{Mn_space}u', 'Connection Spacing')
         specs('distribute_connections', True, 'Distribute connections to top and bottom')
+        specs("start_level", 2, "First connection metal", ChoiceConstraint([1,2,3]))
         specs('odd_vertical', True, 'Vertical metals odd')
 
         cls.add_separation(cls, specs, 'Contacts settings')
@@ -108,6 +109,8 @@ class mos_base(DeviceBase):
         self.s_d_mlayer = params['s_d_mlayer']
         self.gate_connection = params['gate_connection']
         self.gate_metal = params['gate_metal']
+        self.start_level = params['start_level'] if 'start_level' in params else 1
+        self.odd_vertical = params['odd_vertical'] if 'odd_vertical' in params else False
         
         self.w = Numeric(params['w'])*1e6
         self.l = Numeric(params['l'])*1e6
@@ -140,8 +143,23 @@ class mos_base(DeviceBase):
             self.dummies_count = 0
 
         super().setupParams(params)
-        self.vertical_layers = self.odd_layers if 'odd_vertical' in params and params['odd_vertical'] else self.even_layers
-        self.horizontal_layers = self.even_layers if 'odd_vertical' in params and params['odd_vertical'] else self.odd_layers
+        self.horizontal_layers = []
+        self.vertical_layers = []
+        self.metal_layers = []
+        for i in range(1,5):
+            layer = Layer(f"Metal{i}")
+            self.metal_layers.append(layer)
+            if i < self.start_level: continue;
+            if self.odd_vertical:
+                if i%2 == 0:
+                    self.horizontal_layers.append(layer)
+                else:
+                    self.vertical_layers.append(layer)
+            else:
+                if i%2 != 0:
+                    self.horizontal_layers.append(layer)
+                else:
+                    self.vertical_layers.append(layer)
 
     @classmethod
     def validGuardRingTypes(cls) -> List[GuardRingType]:
@@ -438,6 +456,8 @@ class mos_base(DeviceBase):
                     gate_cnt_box = self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.bottom), 'GatPoly', metal_layer, True, 'centerTop')
                     self.gate_box_b = gate_cnt_box.box
                     gates_b.append(gate_cnt_box.box)
+                    poly_fill_box = Box(gate_box.left, gate_box.bottom, gate_box.right, gate_cnt_box.bottom)
+                    dbCreateRect(self, poly_layer, poly_fill_box)
                     
                 ### Top contacts
                 if 'T' in self.gate_connection:
@@ -446,6 +466,8 @@ class mos_base(DeviceBase):
                     gate_cnt_box = self.genVia(gate_cnt_width, 0, GridFix(gate_box.box.center().x), GridFix(gate_box.box.top), 'GatPoly', metal_layer, True, 'centerBottom')
                     self.gate_box_t = gate_cnt_box.box
                     gates_t.append(gate_cnt_box.box)
+                    poly_fill_box = Box(gate_box.left, gate_box.top, gate_box.right, gate_cnt_box.top)
+                    dbCreateRect(self, poly_layer, poly_fill_box)
             
             if typ == 'P' and not hv:
                 ihpAddThermalMosLayer(self, Box(xpoly_beg, ypoly_beg+diffoffset, xpoly_end + cont_size /2 , ypoly_end+diffoffset), True, 'pmos')

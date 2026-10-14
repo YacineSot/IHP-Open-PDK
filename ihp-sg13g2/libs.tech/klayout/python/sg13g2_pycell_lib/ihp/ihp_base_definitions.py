@@ -97,6 +97,7 @@ class ihp_base_definitions(base_definitions):
         """
         original_cell_context = self._getCurrentCellContext
         device = device_model()
+        connection_params['gate_metal'] = self.horizontal_layers[0]._name.replace('Metal', 'M') if not connection_params['gate_metal'] else connection_params['gate_metal']
         params = {'w': w, 
                     'l': l, 
                     'ng': ng, 
