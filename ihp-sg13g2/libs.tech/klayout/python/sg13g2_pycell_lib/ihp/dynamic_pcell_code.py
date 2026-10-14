@@ -1,6 +1,7 @@
 
 from cni.dlo import *
 from .dynamic_pcell_base import dynamic_pcell_base
+from .guard_ring_code import GuardRingType
 from .ihp_base_definitions import ihp_base_definitions
 from .device_base_code import DeviceBase
 from .nmos_code import nmos
@@ -79,7 +80,33 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         self.__dict__.update(params)
         self.set_devices(self.model_type)
         params['guardRingType'] = 'auto'
+        self.use_deep_nwell = self.use_nbulay
+        self.pmos_layout_pattern = self.sanitize_pattern_string(self.pmos_layout_pattern)
+        self.nmos_layout_pattern = self.sanitize_pattern_string(self.nmos_layout_pattern)
         super().setupParams(params)
+    
+    def sanitize_pattern_string(self, pattern: str) -> str:
+        """
+        Cleans the user-input layout pattern string before processing.
+        Fixes multiple spaces, tabs, newlines, and trailing/leading whitespace.
+        """
+        if not pattern or not isinstance(pattern, str):
+            return ""
+            
+        # .split() without arguments automatically splits by ANY whitespace 
+        # (spaces, tabs, newlines) and discards empty strings caused by multiple spaces.
+        # .join() stitches them back together with exactly one space.
+        cleaned_pattern = " ".join(pattern.split())
+        
+        # Convert to uppercase to ensure letters match device declarations safely
+        return cleaned_pattern.upper()
+    
+    @classmethod
+    def validGuardRingTypes(cls) -> List[GuardRingType]:
+        """
+        Template method for subclasses to restrict the guard ring types
+        """
+        return [GuardRingType.AUTO]
     
     def genLayout(self):
         self.gen_dynamic_array()

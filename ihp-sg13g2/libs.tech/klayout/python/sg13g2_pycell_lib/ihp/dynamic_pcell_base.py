@@ -404,8 +404,9 @@ class dynamic_pcell_base(base_definitions):
         nmos_rows = []
         
         # 1. Generate PMOS Block
+        nwell = 'dwell' if self.use_deep_nwell else 'well'
         if self.pmos_layout_pattern:
-            pmos_rows = self.gen_array_by_model(self.pmos_layout_pattern, self.pmos, self.pmos_w, self.pmos_l, self.dummy_pmos_l, 'well')
+            pmos_rows = self.gen_array_by_model(self.pmos_layout_pattern, self.pmos, self.pmos_w, self.pmos_l, self.dummy_pmos_l, nwell)
             down_start_y = pmos_rows[0]['guard_ring_box'].bottom - self.guardRingWidth
             self.gen_vertical_connections(pmos_rows)
             
@@ -459,7 +460,7 @@ class dynamic_pcell_base(base_definitions):
             if self.pmos_layout_pattern:
                 tap_bbox = pya.DBox(self.ntap['min_left'], self.ntap['min_bottom'], self.ntap['max_right'], self.ntap['max_top'])\
                                .enlarged(self.guardRingDistance_X, self.guardRingDistance_Y)
-                self.gen_tap(tap_bbox, 'well', 'nswe', self.guardRingWidth, 'well')
+                self.gen_tap(tap_bbox, nwell, 'nswe', self.guardRingWidth, nwell)
                 
             if self.nmos_layout_pattern:
                 tap_bbox = pya.DBox(self.ptap['min_left'], self.ptap['min_bottom'], self.ptap['max_right'], self.ptap['max_top'])\

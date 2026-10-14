@@ -275,8 +275,8 @@ class ihp_base_definitions(base_definitions):
         tap_shape: shape of the tap (here we define the inluding sides nsew (north, south, east, west))
         tap_name: name of the tap (to display over the gate)
         """
-        ring_type = 'nwell' if tap_type == 'well' else 'psub'
-        generate_guard_ring(self, ring_type, tap_shape, box.width(), box.height(), box.center().x, box.center().y, tap_width, use_nbulay=False)
+        ring_type = 'nwell' if 'well' in tap_type else 'psub'
+        generate_guard_ring(self, ring_type, tap_shape, box.width(), box.height(), box.center().x, box.center().y, tap_width, use_nbulay=tap_type[0] == 'd')
         if ring_type == 'nwell':
             self.draw_label(box, 'VDD', Layer('NWell'))
         else:
