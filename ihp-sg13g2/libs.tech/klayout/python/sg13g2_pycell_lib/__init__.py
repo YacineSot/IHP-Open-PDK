@@ -86,7 +86,8 @@ custom_moduleNames = [
         #'mirror_ihp_code',
         #'diff_pairs_code',
         't_gate_code', 
-        'dynamic_pcell_code'
+        'dynamic_pcell_code',
+        'power_grid_code'
 ]
 
 def getProcessNames():

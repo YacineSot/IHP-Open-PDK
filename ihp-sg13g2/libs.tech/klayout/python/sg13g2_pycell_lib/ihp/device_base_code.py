@@ -69,6 +69,8 @@ class DeviceBase(DloGen):
         specs('south', def_tap['south'], 'Include South Side')
         specs('west', def_tap['west'], 'Include West Side')
         specs('east', def_tap['east'], 'Include East Side')
+        
+        specs('enable_warnings', False, 'Enable warning messages')
 
 
     def setupParams(self, params):

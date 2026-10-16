@@ -72,8 +72,6 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         
         cls.default_ring = 'auto'
         super().defineParamSpecs(specs)
-        
-        specs('enable_warnings', False, 'Enable warning messages')
 
     def setupParams(self, params):
         # process parameter values entered by user

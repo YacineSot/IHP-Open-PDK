@@ -161,10 +161,19 @@ class via_stack(DloGen):
             idx_b, idx_t = idx_t, idx_b
             b_layer, t_layer = t_layer, b_layer  # Also swap layer names
         stack_layers = metal_layers[idx_b:idx_t+1]
-        def via_count_from_size(via_size, via_sep, via_total_size, via_num):
-            ret = math.floor((via_total_size + via_sep)/(via_size + via_sep)) if via_total_size > 0 else via_num
+        def via_count_from_size(via_size, via_sep, via_total_size, via_num, via_enc):
+            """Calculates how many vias fit while strictly respecting the total metal size including enclosures."""
+            if via_total_size > 0:
+                # Subtract the metal enclosures from both sides to find the true space available for vias
+                available_space = via_total_size - (2 * via_enc)
+                if available_space >= via_size:
+                    ret = math.floor((available_space + via_sep) / (via_size + via_sep))
+                else:
+                    ret = 1
+            else:
+                ret = via_num
             self.fix_min_area = ret > 1
-            return max(ret, 1)
+            return max(int(ret), 1)
 
         if vn_total_width == 0 and self.extra_vias:
             via_size = vn_size
@@ -187,16 +196,46 @@ class via_stack(DloGen):
                 
                 
         
-        cont_cols_from_size = via_count_from_size(cont_size, cont_sep2, vn_total_width - cont_enc1*2, vn_columns)
-        cont_rows_from_size = via_count_from_size(cont_size, cont_sep2, vn_total_height, vn_rows)
-        v1_cols_from_size = via_count_from_size(v1_size, v1_sep2, vn_total_width, vn_columns)
-        v1_rows_from_size = via_count_from_size(v1_size, v1_sep2, vn_total_height, vn_rows)
-        vn_cols_from_size = via_count_from_size(vn_size, vn_sep2, vn_total_width, vn_columns)
-        vn_rows_from_size = via_count_from_size(vn_size, vn_sep2, vn_total_height, vn_rows)
-        tv1_cols_from_size = via_count_from_size(tv1_size, tv1_sep, vn_total_width, vn_columns)
-        tv1_rows_from_size = via_count_from_size(tv1_size, tv1_sep, vn_total_height, vn_rows)
-        tv2_cols_from_size = via_count_from_size(tv2_size, tv2_sep, vn_total_width, vn_columns)
-        tv2_rows_from_size = via_count_from_size(tv2_size, tv2_sep, vn_total_height, vn_rows)
+        if vn_total_width == 0 and self.extra_vias:
+            via_size = vn_size
+            via_sep = vn_sep2
+            via_enc = vn_enc1
+            if t_layer == 'TopMetal2':
+                via_size = tv2_size
+                via_sep = tv2_sep
+                via_enc = tm2_enc
+            elif t_layer == 'TopMetal1':
+                via_size = tv1_size
+                via_sep = tv1_sep
+                via_enc = tm1_enc
+            elif t_layer == 'Metal1':
+                via_size = cont_size
+                via_sep = cont_sep2
+                via_enc = cont_enc2
+            vn_total_width = (vn_columns * via_size + (vn_columns - 1) * via_sep) + via_enc
+            vn_total_height = (vn_rows * via_size + (vn_rows - 1) * via_sep) + via_enc
+                
+        # Calculate maximum enclosures needed so the via array doesn't push ANY connected layer past the bounds
+        max_cont_enc_x = max(cont_enc1, cont_enc2)
+        max_cont_enc_y = max(cont_enc1, cont_enc3)
+        max_tv1_enc = max(tv1_enc, tm1_enc)
+        max_tv2_enc = max(tv2_enc, tm2_enc)
+        
+        # Apply the enclosures to the row and column calculations
+        cont_cols_from_size = via_count_from_size(cont_size, cont_sep2, vn_total_width, vn_columns, max_cont_enc_x)
+        cont_rows_from_size = via_count_from_size(cont_size, cont_sep2, vn_total_height, vn_rows, max_cont_enc_y)
+        
+        v1_cols_from_size = via_count_from_size(v1_size, v1_sep2, vn_total_width, vn_columns, v1_enc)
+        v1_rows_from_size = via_count_from_size(v1_size, v1_sep2, vn_total_height, vn_rows, v1_enc1)
+        
+        vn_cols_from_size = via_count_from_size(vn_size, vn_sep2, vn_total_width, vn_columns, vn_enc)
+        vn_rows_from_size = via_count_from_size(vn_size, vn_sep2, vn_total_height, vn_rows, vn_enc1)
+        
+        tv1_cols_from_size = via_count_from_size(tv1_size, tv1_sep, vn_total_width, vn_columns, max_tv1_enc)
+        tv1_rows_from_size = via_count_from_size(tv1_size, tv1_sep, vn_total_height, vn_rows, max_tv1_enc)
+        
+        tv2_cols_from_size = via_count_from_size(tv2_size, tv2_sep, vn_total_width, vn_columns, max_tv2_enc)
+        tv2_rows_from_size = via_count_from_size(tv2_size, tv2_sep, vn_total_height, vn_rows, max_tv2_enc)
 
         # Pre-calculate maximum box dimensions for the origin offset logic
         max_box_w = 0

@@ -1,0 +1,12 @@
+{
+    "cdf_version": "Internal CDF version tracking. Do not modify manually.",
+    "w": "Overall width of the generated power grid bounding box.",
+    "l": "Overall length (height) of the generated power grid bounding box.",
+    "t_metal": "Select the highest metal layer used in the power grid mesh. Vias will be automatically generated from the bottom metal up to this layer at intersections.",
+    "b_metal": "Select the lowest (base) metal layer used in the power grid mesh.",
+    "t_metal_width": "Width of the routing tracks (straps) on the top metal layer.",
+    "b_metal_width": "Width of the routing tracks (straps) on the bottom metal layer.",
+    "n_cols": "Number of vertical routing columns (straps) distributed across the grid width.",
+    "n_rows": "Number of horizontal routing rows (straps) distributed across the grid length.",
+    "min_spacing": "Read-only -- Minimum spacing between adjacent routing tracks (straps) on the same metal layer."
+}

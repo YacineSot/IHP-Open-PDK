@@ -13,6 +13,7 @@ import cni.dlo
 
 class ihp_base_definitions(base_definitions):
     def additionnal_specs(self, specs, descriptions):
+        self.init_metal_stacks(self)
         specs("start_level", 2, "First connection metal", ChoiceConstraint([1,2,3]), tooltip=descriptions['metal_level'])
         specs("odd_vertical", True, "Vertical Metal ODD",tooltip=descriptions['odd_vertical'])
     
@@ -41,6 +42,7 @@ class ihp_base_definitions(base_definitions):
         self.nmos = my_nmos_class
         
         """
+        
         self.layout = Layer.layout
         if model_type == "HV":
             self.pmos = pmosHV
@@ -53,7 +55,7 @@ class ihp_base_definitions(base_definitions):
         self.horizontal_layers = []
         self.vertical_layers = []
         self.metal_layers = []
-        for i in range(1,5):
+        for i in range(1,len(self.metal_stacks)+1):
             layer = Layer(f"Metal{i}")
             self.metal_layers.append(layer)
             if i < self.start_level: continue;
@@ -67,6 +69,25 @@ class ihp_base_definitions(base_definitions):
                     self.horizontal_layers.append(layer)
                 else:
                     self.vertical_layers.append(layer)
+    
+    
+    def init_metal_stacks(self):
+        self.metal_stacks = ['M1', 'M2', 'M3', 'M4']
+        self.via_stacks = ['V1', 'V2', 'V3']
+        self.top_metal_stacks = ['TM1']
+        self.top_via_stacks = ['TV1']
+        try:
+            Layer('nBuLay')
+            Layer('Metal5')
+            Layer('TopMetal2')
+            self.metal_stacks.append('M5')
+        except:
+            pass
+        self.top_metal_stacks.append('TM2')
+        self.via_stacks.append('V4')
+        self.top_via_stacks.append('TV2')
+        # except e: print(e)
+    
     
     def move_device_by(self, device, x, y):
         device_context = device._getCurrentCellContext()

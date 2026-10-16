@@ -48,7 +48,7 @@ class GuardRingType(StrEnum):
 
     @classmethod
     def cases(cls) -> List[GuardRingType]:
-        return [c if c != cls.AUTO else cls.NONE for c in cls]
+        return [c for c in cls if c != cls.AUTO]  # Exclude AUTO from the list of cases
 
     @classmethod
     def case_values(cls) -> List[str]:
