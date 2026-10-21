@@ -73,6 +73,9 @@ moduleNames = [
         'cap_cmomf_code',      # MoM fringe capacitor (M1-M4 thin-metal stack)
         # TBD
         'chipText_code',       # Symlink - chipText
+        ## Custom devices
+        'power_grid_code',      # Custom - Power grid generator
+        'dynamic_pcell_code',    # Custom - Dynamic PCell generator
         
 ]
 

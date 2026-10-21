@@ -20,7 +20,6 @@
 
   # Configuration
   TARGET_LABEL   = "VDD" 
-  PCELL_LIB_NAME = "SG13_custom_dev"
   PCELL_NAME     = "via_stack"
 
   def self.encode_pcell_string(str)
@@ -131,10 +130,19 @@
 
     puts "Found #{unconnected_intersections.count} valid TM1 intersections."
 
-    # PCell Setup
-    lib = RBA::Library.library_ids.map { |id| RBA::Library.library_by_id(id) }
-                                  .find { |l| l.name == PCELL_LIB_NAME }
-    raise "Library #{PCELL_LIB_NAME} not found" if lib.nil?
+    # Dynamic PCell Setup - Find which library currently contains the PCell
+    lib = nil
+    via_id = 0
+    RBA::Library.library_ids.each do |id|
+      l = RBA::Library.library_by_id(id)
+      pid = l.layout.pcell_id(PCELL_NAME)
+      if pid != 0
+        lib = l
+        via_id = pid
+        break
+      end
+    end
+    raise "PCell '#{PCELL_NAME}' not found in any loaded library" if lib.nil?
 
     layout.start_changes
     mw.manager.transaction("Auto Insert Via Stacks")
@@ -206,7 +214,7 @@
             end
           end
 
-          next if width_um &lt; 0.7 &amp;&amp; height_um &lt; 0.7
+          next if width_um &lt; 0.9 &amp;&amp; height_um &lt; 0.9
 
           center_x = self.fix_grid(bbox.center.x, 5)
           center_y = self.fix_grid(bbox.center.y, 5)
@@ -214,13 +222,12 @@
           pcell_params = {
             "b_layer"         =&gt; self.encode_pcell_string("Metal1"), 
             "t_layer"         =&gt; self.encode_pcell_string(index == 0 ? "TopMetal1" : "Metal4"),
+            "vn_columns"      =&gt; self.encode_pcell_string("0"),
+            "vn_rows"         =&gt; self.encode_pcell_string("0"),
             "use_array_size"  =&gt; self.encode_pcell_string("True"),
             "vn_total_width"  =&gt; self.encode_pcell_string("#{width_um}u"),
             "vn_total_height" =&gt; self.encode_pcell_string("#{height_um}u")
           }
-          
-          via_id = lib.layout.pcell_id(PCELL_NAME)
-          raise "Cell name #{PCELL_NAME} not found" if via_id == 0
 
           pcell_idx = layout.add_pcell_variant(lib, via_id, pcell_params)
           trans = RBA::Trans.new(center_x, center_y)

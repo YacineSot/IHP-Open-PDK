@@ -4,7 +4,7 @@
 # writes the .save instructions for given FET instance
 proc write_save_lines {type model schpath spiceprefix instname} {
   global sch_expand
-  if {[regexp {[pn]mos} $type]} {
+  if {[regexp {[pn]mos} $type]} { 
     set m n$model
     set devpath [string tolower @n.$schpath$spiceprefix$instname.$m]
 
@@ -16,8 +16,17 @@ proc write_save_lines {type model schpath spiceprefix instname} {
     append sch_expand(savelist) ".save $devpath\[vdss\]\n"
     append sch_expand(savelist) ".save $devpath\[vds\]\n"
     append sch_expand(savelist) ".save $devpath\[cgg\]\n"
+    append sch_expand(savelist) ".save $devpath\[cgs\]\n"
+    append sch_expand(savelist) ".save $devpath\[cgd\]\n"
     append sch_expand(savelist) ".save $devpath\[cgsol\]\n"
     append sch_expand(savelist) ".save $devpath\[cgdol\]\n"
+  }
+
+  if {[regexp {moscap_[pn]} $type]} {
+    set m n$model
+    set devpath [string tolower @n.$schpath$spiceprefix$instname.$m]
+
+    append sch_expand(savelist) ".save $devpath\[cgg\]\n"
   }
   
 }
@@ -106,9 +115,15 @@ proc hier_sch_expand {{level 0} {only_subckts 0} {all_hierarchy 1} {pattern {.*}
 # generate the .save lines to save all MOS parameters
 proc save_params {} {
   global sch_expand
-  sch_expand 0 1 {[pn]mos}
+  sch_expand 0 1 {([pn]mos|moscap_[pn])}
   set fet_list $sch_expand(savelist)
   return "* Place this .save file with a .include line in your testbench\n\n$fet_list"
+}
+# return numeric value or "" if missing
+proc raw_or_double {path} {
+  if {[catch {xschem raw value $path -1} v]} { return "Not Found" }
+  if {[string is double -strict $v]} { return $v }
+  return "Not Double or empty"
 }
 
 # displays mos parameters simulation data , used in symbol annotate_fet_params.sym
@@ -123,7 +138,8 @@ proc display_fet_params {instname} {
   if {[regexp {[pn]mos} $type]} {
     set m n$model
     set devpath [string tolower @n.$schpath$spiceprefix$instname.$m]
-
+    set cgs  [raw_or_double "$devpath\[cgs\]"]
+    set cgd  [raw_or_double "$devpath\[cgd\]"]
     append txt "ids   = [to_eng [xschem raw value i($devpath\[ids\]) -1]]\n"
     append txt "gm    = [to_eng [xschem raw value $devpath\[gm\] -1]]\n"
     append txt "gds   = [to_eng [xschem raw value $devpath\[gds\] -1]]\n"
@@ -132,6 +148,8 @@ proc display_fet_params {instname} {
     append txt "vdss  = [to_eng [xschem raw value v($devpath\[vdss\]) -1]]\n"
     append txt "vds   = [to_eng [xschem raw value v($devpath\[vds\]) -1]]\n"
     append txt "cgg   = [to_eng [xschem raw value $devpath\[cgg\] -1]]\n"
+    append txt "cgs   = [to_eng $cgs]\n"
+    append txt "cgd   = [to_eng $cgd]\n"
     set pi 3.141592654
     set gm [xschem raw value $devpath\[gm\] -1]
     set cgg [xschem raw value $devpath\[cgg\] -1]
@@ -146,6 +164,11 @@ proc display_fet_params {instname} {
     }
     append txt "ft    = [to_eng ${ft}]\n"
     append txt "gm/id = [to_eng [expr $gmid]]\n"
+  }
+  if {[regexp {moscap_[pn]} $type]} {
+    set m n$model
+    set devpath [string tolower @n.$schpath$spiceprefix$instname.$m]
+    append txt "cgg   = [to_eng [xschem raw value $devpath\[cgg\] -1]]\n"
   }
   return $txt
 }

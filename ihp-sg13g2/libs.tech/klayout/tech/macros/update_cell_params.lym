@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description>Update Specific PCell Instances</description>
+ <version>1.0</version>
+ <category/>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <priority>0</priority>
+ <shortcut/>
+ <show-in-menu>true</show-in-menu>
+ <group-name>User_Dev</group-name>
+ <menu-path>sg13cmos5l_menu&gt;end("SG13CMOS5L PDK").end</menu-path>
+ <interpreter>ruby</interpreter>
+ <dsl-interpreter-name/>
+ <text>module SelectivePCellUpdater
+  include RBA
+  def self.main()
+    app = Application.instance
+    mw = app.main_window
+    lv = mw.current_view
+    raise "No active layout view" if lv.nil?
+  
+    layout = lv.active_cellview.layout
+    cell = lv.active_cellview.cell
+  
+    # 1. Require exactly two selected instances
+    sel = lv.object_selection
+    if sel.size != 2 || !sel[0].is_cell_inst? || !sel[1].is_cell_inst?
+      QMessageBox.warning(mw, "Selection Error", "Please select exactly TWO instances:\n1. The instance you just updated.\n2. One instance that has the old parameters you want to replace.")
+      return
+    end
+  
+    inst1 = sel[0].inst
+    inst2 = sel[1].inst
+    cell1 = layout.cell(inst1.cell_index)
+    cell2 = layout.cell(inst2.cell_index)
+  
+    # 2. Validate they are variants of the same base PCell
+    if !cell1.is_pcell_variant? || !cell2.is_pcell_variant? || cell1.pcell_id != cell2.pcell_id
+      QMessageBox.warning(mw, "Error", "Both selected instances must be variants of the same base PCell.")
+      return
+    end
+  
+    # 3. KLayout assigns higher cell indexes to newer cells.
+    # The instance you just updated will always have the higher cell_index.
+    if inst1.cell_index &gt; inst2.cell_index
+      master_idx = inst1.cell_index
+      target_idx = inst2.cell_index
+    else
+      master_idx = inst2.cell_index
+      target_idx = inst1.cell_index
+    end
+  
+    # 4. Find and update all matching instances
+    layout.start_changes
+    mw.manager.transaction("Selective PCell Update")
+  
+    # Collect instances first to avoid modifying the layout while iterating
+    instances_to_update = []
+    cell.each_inst do |inst|
+      if inst.cell_index == target_idx
+        instances_to_update &lt;&lt; inst
+      end
+    end
+  
+    # Apply the new cell_index (parameters)
+    instances_to_update.each do |inst|
+      inst.cell_index = master_idx
+    end
+  
+    mw.manager.commit
+    layout.end_changes
+  
+    # 5. Clean up the database (removes the old PCell variant if no longer used)
+    layout.cleanup
+    
+    lv.update_content
+    
+    # Inform the user
+    puts "Successfully updated #{instances_to_update.size} instances."
+    QMessageBox.information(mw, "Success", "Successfully updated #{instances_to_update.size} instances to the new parameters.")
+  end
+  self.main()
+end
+</text>
+</klayout-macro>

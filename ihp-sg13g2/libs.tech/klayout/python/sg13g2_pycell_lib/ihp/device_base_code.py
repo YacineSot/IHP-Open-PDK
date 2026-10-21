@@ -51,6 +51,7 @@ class DeviceBase(DloGen):
     @classmethod
     def defineParamSpecs(cls, specs):
         cls.techparams = specs.tech.getTechParams()
+        cls.init_metal_layers(cls)
         def_tap = {'north': True, 'south': True, 'west': True, 'east': True} if not hasattr(cls, 'default_tap') else cls.default_tap
         choices = [c.value for c in cls.validGuardRingTypes()]
         
@@ -63,7 +64,11 @@ class DeviceBase(DloGen):
         specs('guardRingDistance_Y', cls.default_distance, 'Guard Ring Vertical Distance')
         specs('guardRingWidth', '0.3u', 'Guard Ring Width')
         specs('distribute_contacts', False, 'Contacts Follows Active')
-        specs('use_nbulay', False, "Use Deep Nwell for Pmos devices")
+        try:
+            Layer('nBulay')
+            specs('use_nbulay', False, "Use Deep Nwell for Pmos devices")
+        except: 
+            cls.use_nbulay = False;
         cls.add_separation(self=cls, specs=specs, separator=" ")
         specs('north', def_tap['north'], 'Include North Side')
         specs('south', def_tap['south'], 'Include South Side')
@@ -101,6 +106,26 @@ class DeviceBase(DloGen):
                 self.even_layers.append(Layer(f'Metal{i}'))
             else:
                 self.odd_layers.append(Layer(f'Metal{i}'))
+    
+    
+    def init_metal_layers(self):
+        self.metal_layers = []
+        self.t_metal_layers = ['TopMetal1']
+        self.via_layers = ['Via1', 'Via2', 'Via3']
+        for i in range(4):
+            self.metal_layers.append(f"Metal{i+1}")
+        met5 = None
+        try:
+            met5 = Layer('Metal5')
+        except: pass
+        
+        if met5:
+            self.metal_layers.append('Metal5')
+            self.t_metal_layers.append('TopMetal2')
+            self.via_layers.append('Via4')
+        self.via_layers.append('TopVia1')
+        if met5:
+            self.via_layers.append('TopVia2')
     
     def add_separation(self, specs, separator = 'Separator'):
         count = len(specs.get_parameters())

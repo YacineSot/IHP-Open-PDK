@@ -17,12 +17,12 @@ class power_grid(DeviceBase, ihp_base_definitions):
         
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint(), tooltip=descriptions['cdf_version'])
         
-        specs('w', 10, 'Width', unit='um', tooltip=descriptions['w'])
-        specs('l', 10, 'Length', unit='um', tooltip=descriptions['l'])
+        specs('w', 10.0, 'Width', unit='um', tooltip=descriptions['w'])
+        specs('l', 10.0, 'Length', unit='um', tooltip=descriptions['l'])
         specs('t_metal', cls.top_metal_stacks[-1], 'Top Metal Layer',ChoiceConstraint(cls.metal_stacks + cls.top_metal_stacks), tooltip=descriptions['t_metal'])
         specs('b_metal', cls.metal_stacks[-1], 'Bottom Metal Layer',ChoiceConstraint(cls.metal_stacks + cls.top_metal_stacks), tooltip=descriptions['b_metal'])
-        specs('t_metal_width', 2, 'Top Metal Width', unit='um', tooltip=descriptions['t_metal_width'])
-        specs('b_metal_width', 2, 'Bottom Metal Width', unit='um', tooltip=descriptions['b_metal_width'])
+        specs('t_metal_width', 2.0, 'Top Metal Width', unit='um', tooltip=descriptions['t_metal_width'])
+        specs('b_metal_width', 2.0, 'Bottom Metal Width', unit='um', tooltip=descriptions['b_metal_width'])
         specs('n_cols', 4, 'Number of Top Metal Columns', tooltip=descriptions['n_cols'])
         specs('n_rows', 4 , 'Number of Bottom Metal Rows', tooltip=descriptions['n_rows'])
         specs('min_spacing', 0.5, 'Minimum Spacing',  unit='um', tooltip=descriptions['min_spacing'])

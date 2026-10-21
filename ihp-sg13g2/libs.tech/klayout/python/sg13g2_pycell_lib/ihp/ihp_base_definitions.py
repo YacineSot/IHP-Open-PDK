@@ -81,11 +81,11 @@ class ihp_base_definitions(base_definitions):
             Layer('Metal5')
             Layer('TopMetal2')
             self.metal_stacks.append('M5')
+            self.top_metal_stacks.append('TM2')
+            self.via_stacks.append('V4')
+            self.top_via_stacks.append('TV2')
         except:
             pass
-        self.top_metal_stacks.append('TM2')
-        self.via_stacks.append('V4')
-        self.top_via_stacks.append('TV2')
         # except e: print(e)
     
     
@@ -254,15 +254,16 @@ class ihp_base_definitions(base_definitions):
             'b_layer': b_layer._name,
             't_layer': t_layer._name,
             'origin': origin,
-            'extra_vias': True,
+            'extra_vias': False,
             'sx': box.center().x,
             'sy': box.center().y,
         }
         via_device.tech = self.tech
         via_device._getCurrentCellContext = self._getCurrentCellContext
         via_device.setupParams(params)
-        via_device.vn_total_width = box.width()
-        via_device.vn_total_height = box.height()
+        via_device.vn_total_width = self.fix_grid(box.width())
+        via_device.vn_total_height = self.fix_grid(box.height())
+        via_device.use_array_size = True
         via_device.sx = box.center().x
         via_device.sy = box.center().y
         via_device.genLayout()
