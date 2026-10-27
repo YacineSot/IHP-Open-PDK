@@ -406,7 +406,7 @@ class dynamic_pcell_base(base_definitions):
         nwell = 'dwell' if self.use_deep_nwell else 'well'
         if self.pmos_layout_pattern:
             pmos_rows = self.gen_array_by_model(self.pmos_layout_pattern, self.pmos, self.pmos_w, self.pmos_l, self.dummy_pmos_l, nwell)
-            down_start_y = pmos_rows[0]['guard_ring_box'].bottom - self.guardRingWidth
+            down_start_y = pmos_rows[0]['guard_ring_box'].bottom - self.guardRingWidth - self.pn_spacing
             self.gen_vertical_connections(pmos_rows)
             
         # Verification to prevent layout collisions

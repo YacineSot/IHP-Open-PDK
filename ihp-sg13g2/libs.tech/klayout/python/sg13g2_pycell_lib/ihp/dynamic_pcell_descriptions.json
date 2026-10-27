@@ -33,5 +33,6 @@
     "dummies_spacing": "Distance between adjacent dummy devices.",
     "overlap_dummies_diffusions": "Check this box to overlap the Source/Drain diffusions of dummy devices to save layout area.",
     "place_taps": "Enable to generate substrate or well taps internally between the devices in the row.",
-    "metal_level": "Specify the minimum (starting) metal layer used for routing.\n\nRouting can only use this layer and above; lower metals are reserved and skipped.\n\nExample:\nIf devices normally route with two levels — met1 horizontal and met2 vertical — setting this to 2 forces routing to start at met2 instead. The two-level pair then shifts up: met2 (vertical) and met3 (horizontal).\n\nIn short: raising this value shifts your whole routing stack up, leaving the lower metals untouched."
+    "metal_level": "Specify the minimum (starting) metal layer used for routing.\n\nRouting can only use this layer and above; lower metals are reserved and skipped.\n\nExample:\nIf devices normally route with two levels — met1 horizontal and met2 vertical — setting this to 2 forces routing to start at met2 instead. The two-level pair then shifts up: met2 (vertical) and met3 (horizontal).\n\nIn short: raising this value shifts your whole routing stack up, leaving the lower metals untouched.",
+    "pn_spacing": "Additional spacing between PMOS and NMOS devices in the row. Use a negative value to force diffusion merging."
 }

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description/>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <priority>0</priority>
+ <shortcut/>
+ <show-in-menu>false</show-in-menu>
+ <group-name/>
+ <menu-path/>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text>import pya
+
+# --- Configuration ---
+target_pcell_name = "via_stack"                 # e.g. "nmos" (Leave blank "" to target all PCells)
+param_name = "extra_vias"      # The exact parameter name to change
+new_value = False                      # The new boolean value
+# ---------------------
+
+app = pya.Application.instance()
+mw = app.main_window()
+lv = mw.current_view()
+
+if lv is None:
+    raise Exception("No active layout view")
+
+layout = lv.active_cellview().layout()
+changed_count = 0
+
+lv.transaction("Batch update PCell parameters (Full Hierarchy)")
+
+try:
+    # 1. Iterate through EVERY cell in the entire layout
+    for cell in layout.each_cell():
+        
+        # 2. Iterate through all instances inside each cell
+        for inst in cell.each_inst():
+            if inst.is_pcell():
+                if target_pcell_name in inst.cell.name or target_pcell_name == "":
+                    
+                    pcell_decl = inst.cell.pcell_declaration()
+                    if pcell_decl is None:
+                        continue
+                        
+                    params_list = list(inst.cell.pcell_parameters())
+                    
+                    param_index = -1
+                    for i, p_decl in enumerate(pcell_decl.get_parameters()):
+                        if p_decl.name == param_name:
+                            param_index = i
+                            break
+                            
+                    if param_index != -1 and params_list[param_index] != new_value:
+                        params_list[param_index] = new_value
+                        inst.change_pcell_parameters(params_list)
+                        changed_count += 1
+finally:
+    lv.commit()
+
+print(f"Successfully updated '{param_name}' to {new_value} on {changed_count} instances across the entire hierarchy.")</text>
+</klayout-macro>

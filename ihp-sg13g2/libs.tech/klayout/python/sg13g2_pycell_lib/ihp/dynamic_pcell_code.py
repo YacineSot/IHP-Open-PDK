@@ -30,10 +30,10 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         specs('cdf_version', CDFVersion, 'CDF Version', ReadOnlyConstraint(), tooltip=descriptions['cdf_version'])
 
         cls.add_separation(cls, specs, 'Devices Sizing')
-        specs('pmos_w', 5, 'PMOS Width', unit='um', tooltip=descriptions['pmos_w'])
-        specs('pmos_l', 3, 'PMOS Length', unit='um', tooltip=descriptions['pmos_l'])
-        specs('nmos_w', 5, 'NMOS Width', unit='um', tooltip=descriptions['nmos_w'])
-        specs('nmos_l' , 3, 'NMOS Length', unit='um', tooltip=descriptions['nmos_l'])
+        specs('pmos_w', 5.0, 'PMOS Width', unit='um', tooltip=descriptions['pmos_w'])
+        specs('pmos_l', 3.0, 'PMOS Length', unit='um', tooltip=descriptions['pmos_l'])
+        specs('nmos_w', 5.0, 'NMOS Width', unit='um', tooltip=descriptions['nmos_w'])
+        specs('nmos_l' , 3.0, 'NMOS Length', unit='um', tooltip=descriptions['nmos_l'])
     
         cls.add_separation(cls, specs, 'Model Type')
         specs('model_type', 'LV', 'Model Type', ChoiceConstraint(['HV', 'LV']), tooltip=descriptions['model_type'])
@@ -45,6 +45,7 @@ class dynamic_pcell(dynamic_pcell_base, ihp_base_definitions, DeviceBase):
         specs('horizontal_connection_width', 0.5, 'Horizontal Connection metal width', unit='um', tooltip=descriptions['horizontal_connection_width'])
         specs('vertical_connection_width', 0.5, 'Vertical Connection metal width', unit='um', tooltip=descriptions['vertical_connection_width'])
         specs('connection_spacing', 0.5, 'Connection metal spacing', unit='um', tooltip=descriptions['connection_spacing'])
+        specs('pn_spacing', 0.0, 'Additional spacing between PMOS and NMOS', unit='um', tooltip=descriptions['pn_spacing'])
         specs('nmos_layout_pattern', '3A4B3A', 'NMOS Layout Pattern', tooltip=descriptions['nmos_layout_pattern'])
         specs('pmos_layout_pattern', '3C4D3C', 'PMOS Layout Pattern', tooltip=descriptions['pmos_layout_pattern'])
         specs('gate_connection_top_devices', 'AC', 'Gate Connection On Top', tooltip=descriptions['gate_connection_top_devices'])

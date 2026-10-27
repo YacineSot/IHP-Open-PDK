@@ -4,6 +4,7 @@
 # License: New BSD
 
 # Parse command line arguments
+
 TARGET_CPU_FLAG=""
 for arg in "$@"; do
   case $arg in
@@ -32,7 +33,7 @@ else
   echo "VerilogA compiler not found - install 'openvaf-r' or 'openvaf' to compile models"
   exit 1
 fi
-
+echo $COMPILER
 echo "======================================================================"
 echo "             Compiling VerilogA models using: '$COMPILER'             "
 echo "======================================================================"
